@@ -1,0 +1,23 @@
+* Coinduction All the Way Up * 
+
+CAWU is Coq library about a new abstract theory of coinduction,
+encompassing:
+ - enhancements of the coinductive proof method
+ - second order coinduction reasonning about enhancements
+ - parametrised coinduction, as proposed by Hur et al.
+ - powerful symmetry arguments
+ - compatibility and respectfulness
+
+See the corresponding paper on HAL:
+ https://hal.archives-ouvertes.fr/hal-01259622/document
+
+and the associated webpage:
+ http://perso.ens-lyon.fr/damien.pous/cawu/
+
+This library compiles at least with Coq 8.5beta1
+
+It is distributed under the terms of the GNU Lesser General Public
+License version 3 (see file LICENSE for more details)
+
+Copyright 2016: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668) 
+Contact info: Damien.Pous@ens-lyon.fr

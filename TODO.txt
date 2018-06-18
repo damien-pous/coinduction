@@ -1,0 +1,9 @@
+symmetry arguments
+derive [mon X] as a sublattice of [X -> X]
+
+
+ordinals
+
+ Inductive S: X -> Prop :=
+ | lim: forall T: X -> Prop, (forall x, T x -> S x) -> S (inf T id)
+ | succ: forall x, S x -> S (b x).
