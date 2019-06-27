@@ -268,7 +268,7 @@ Module CCS(Export M: N).
  
 End CCS.
 
-(** * A proof by enhance coinduction  *)
+(** * A proof by enhanced coinduction  *)
 
 Module acd.
  CoInductive N': Type := a | c | d.

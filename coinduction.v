@@ -21,6 +21,7 @@
 *)
 
 Require Export lattice.
+Require Classical.              (* only for distributivity of the companion *)
 Set Implicit Arguments.
 
 (** * Knaster-Tarski and compatibility  *)
@@ -496,3 +497,117 @@ Section s.
 End s.
 End paco.
 
+
+Module chain.
+Section s.
+ Context {X} {L: CompleteLattice X}. 
+ Variable b: mon X.
+ Notation t := (t b).
+ Inductive S: X -> Prop :=
+ | Sb: forall x, S x -> S (b x)
+ | Sinf: forall T, T <= S -> S (inf T id).
+ Lemma gfpS: gfp b == inf S id.
+ Proof.
+   apply antisym. apply inf_spec. simpl. intros u U. induction U.
+   rewrite gfp_pfp. now apply b. now apply inf_spec.
+   apply leq_gfp. apply leq_infx_id. now apply Sb, Sinf.
+ Qed.
+ Lemma tS: forall s, S s -> t s == s.
+ Proof.
+   intros s H. apply antisym. 2: apply id_t.
+   induction H as [s Hs IH|T HT IH].
+   rewrite (compat_t b s). now apply b.
+   apply inf_spec. intros s Hs. rewrite <-(IH _ Hs). apply t. now apply leq_infx_id.
+ Qed.               
+ Definition S_ x s := S s /\ x <= s.
+ Definition t'_ x := inf (S_ x) id.
+ Lemma t'_mon: Proper (leq ==> leq) t'_.
+ Proof.
+   intros x y H. apply inf_spec; intros s [Ss E]. apply leq_infx_id.
+   split. assumption. now rewrite H. 
+ Qed.
+ Definition t' := Build_mon t'_mon. 
+ Lemma id_t' x: x <= t' x.
+ Proof. apply inf_spec. now intros s [_ ?]. Qed.
+ Lemma St' x: S (t' x).
+ Proof. apply Sinf. now intros ? [? ?]. Qed.
+ Lemma compat_t': t' o b <= b o t'.
+ Proof.
+   intro x. simpl. apply leq_infx_id. split.
+   apply Sb. apply St'. apply b. apply id_t'. 
+ Qed.
+ Theorem tt': t == t'.
+ Proof.
+   apply antisym.
+   intro x. rewrite (id_t' x) at 1. now rewrite tS by apply St'.
+   apply leq_t, compat_t'.
+ Qed.
+ Corollary leq_t' f: f <= t <-> forall s, S s -> f s <= s.
+ Proof.
+   split.
+   intros E s H. now rewrite (E s), tS.
+   intros H. apply Coinduction. intro x. simpl.
+   rewrite (id_t' x) at 1. rewrite H by apply Sb, St'.
+   apply b. rewrite <-tt'. apply t_T.
+ Qed.
+ Lemma St x: S (t x).
+ Abort.
+ Lemma St x: exists tx, S tx /\ tx == t x.
+ Proof. exists (t' x). split. apply St'. now rewrite tt'. Qed.
+
+ Lemma Sflat s: S s -> exists T, T<=S /\ s == inf T b.
+ Proof.
+   induction 1 as [s Hs IH|T HT IH].
+   exists (eq s). split. now intros ? <-.
+   apply antisym. apply inf_spec. now intros ? <-. now apply leq_infx.
+   (* exists (fun t => exists a (A: T a), match IH a A return Prop with ex_intro _ U _ => U t end). *)
+ Abort.
+ 
+ Lemma Sflat s: S s -> s == inf (fun t => S t /\ s <= b t) b.
+ Proof.
+   intro E. apply antisym. now apply inf_spec; intros t [_ T].
+   induction E as [s Hs IH|T HT IH].
+   apply leq_infx. now split.
+   apply inf_spec. intros s Hs.
+   rewrite <- (IH s Hs). apply inf_leq. 2: reflexivity.
+   intros t [St sbt]. split. assumption.
+   rewrite <-sbt. now apply leq_infx_id.
+ Qed.
+
+ Import Classical. 
+ Lemma choose (P A B: X -> Prop): (forall x, P x -> A x \/ B x) -> (exists x, P x /\ B x) \/ (forall x, P x -> A x).
+ Proof.
+   intro H. classical_right. intros x Px.
+   destruct (H _ Px). assumption. exfalso; eauto. 
+ Qed.
+
+ Lemma S_linear x y: S x -> S y -> x <= y \/ y <= x.
+ Proof.
+   intro Sx. revert y. induction Sx as [x Hx IH|T HT IH]; intros y Sy.
+   - pose proof (Sflat Sy) as E.
+     set (T t := S t /\ y <= b t) in E. 
+     assert (IH': forall y, T y -> x <= y \/ y <= x). intros t Tt. apply IH, Tt. 
+     destruct (choose _ _ _ IH') as [[s [Ss sx]]|F].
+     right. rewrite E, <-sx. now apply leq_infx.
+     left. rewrite E. apply inf_spec; intros s Ts. now apply b, F.
+   - assert (IH': forall a, T a -> y <= a \/ a <= y). intros a A. specialize (IH _ A _ Sy). tauto. 
+     destruct (choose _ _ _ IH') as [[s [Ss sx]]|F].
+     left. rewrite <-sx. now apply leq_infx_id.
+     right. apply inf_spec; intros t Tt. now apply F. 
+ Qed.
+
+ Lemma tcup x y: t (cup x y) == cup (t x) (t y).
+ Proof.
+   apply antisym.
+   transitivity (t (cup (t' x) (t' y))).
+   apply t. apply cup_leq; apply id_t'. 
+   destruct (S_linear (St' x) (St' y)) as [xy|yx].
+   transitivity (t (t' y)). apply t. apply cup_spec. now split.
+   rewrite <-tt', (tt_t b y). apply cup_r. 
+   transitivity (t (t' x)). apply t. apply cup_spec. now split.
+   rewrite <-tt', (tt_t b x). apply cup_l.
+   apply cup_spec. split; apply t. apply cup_l. apply cup_r. 
+ Qed.
+
+End s.
+End chain.
