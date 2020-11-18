@@ -16,6 +16,7 @@ Set Implicit Arguments.
 Definition pair A (x y: A) := fun x' y' => x=x' /\ y=y'.
 Lemma leq_pair A (x y: A) (R: A -> A -> Prop): R x y <-> pair x y <= R.
 Proof. firstorder congruence. Qed.
+
 Global Opaque pair.
 Lemma in_pair0 A b (x y: A): t b (pair x y) x y.
 Proof. now apply (id_t b), leq_pair. Qed.
@@ -175,14 +176,16 @@ Lemma binary_proper S (f: S -> S -> S) b:
 Proof. intros H R x x' Hx y y' Hy. apply (ft_t H). now apply (in_binary_ctx f). Qed.
 
 
-
+Transparent pair.
+Lemma converse_pair A (p q: A): converse (pair p q) == pair q p.
+Proof. unfold pair, converse; split; simpl; tauto. Qed.
+Global Opaque pair.
 
 Lemma converse_sup S I P (f: I -> relation S):
   converse (sup P f) == sup P (fun i => converse (f i)).
-Admitted.
+Proof. simpl. firstorder. Qed.
                                                  
-Lemma converse_pair A (p q: A): converse (pair p q) == pair q p.
-Admitted.
+
 
 Ltac solve_sym := solve [
   repeat (rewrite converse_sup; apply sup_spec; intros);

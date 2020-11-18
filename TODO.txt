@@ -1,11 +1,6 @@
-dedicated tactic for inversing transitions in CCS
-freshness on processes
 renaming (explicit on processes / as a LTS construction)
 
 hypotheses in rel.coinduction
-two admits in rel.v
-
-
 
 
 symmetry arguments
