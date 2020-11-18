@@ -50,6 +50,13 @@ Ltac coinduction R H :=
       ];
     clearbody R 
   end.
+  
+Ltac step :=
+  match goal with
+  | |- gfp ?b ?x ?y => apply (proj2 (gfp_fp b x y))
+  | |- body (t ?b) ?R ?x ?y => apply (bt_t b R x y)
+  end;
+  simpl body.
 
 (** * Generic definitions and results about relations *)
 

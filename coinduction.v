@@ -107,9 +107,12 @@ Section s1.
  
  Lemma tt_t: t o t <= t.
  Proof. apply leq_t, compat_comp; apply compat_t. Qed.
-
+ 
  Lemma ft_t f: f <= t -> f o t <= t.
  Proof. intro H. rewrite H. apply tt_t. Qed.
+
+ Lemma bt_t: b o t <= t.
+ Proof. apply ft_t, b_t. Qed.
 
  Lemma t_idem: t o t == t.
  Proof. apply antisym. apply tt_t. now rewrite <-id_t at 2. Qed.
