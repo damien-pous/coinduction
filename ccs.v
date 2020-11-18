@@ -69,7 +69,15 @@ Module CCS(Export M: N).
    | rep p => rep p 
    end.
  Lemma Sd p: p = id_S p.
- Proof. now case p. Qed.                  
+ Proof. now case p. Qed.
+
+ Ltac inverse_trans :=
+   match goal with
+   | H: trans ?p _ _ |- _ =>
+     tryif is_var p then fail else
+       inversion H; subst; clear H; try congruence; inverse_trans
+   | _ => idtac
+   end.
 
  (** the function defining simulations and similarity *)
  Program Definition s: mon (S -> S -> Prop) :=
@@ -89,31 +97,19 @@ Module CCS(Export M: N).
  Lemma parC: forall p q, par p q ~ par q p.
  Proof.
    coinduction' R H. 
-   intros p q l p' pp'. inversion_clear pp'; eauto.
+   intros p q l p' pp'. inverse_trans; eauto.
  Qed.
 
  Lemma parA: forall p q r, par p (par q r) ~ par (par p q) r.
  Proof.
-   coinduction R H. intros p q r; split. 
-   intros l p' pp'. inversion_clear pp'; eauto.
-    inversion_clear H0; eauto. 
-    inversion_clear H1; eauto. 
-    inversion_clear H1; eauto. 
-   intros l q' qq'. simpl. inversion_clear qq'; eauto.
-    inversion_clear H0; eauto. 
-    inversion_clear H0; eauto. 
-    inversion_clear H0; eauto. 
+   coinduction R H.
+   intros p q r; split; intros l p' pp'; simpl; inverse_trans; eauto.
  Qed.
  
  Lemma par0p: forall p, par nil p ~ p.
  Proof.
-   coinduction R H. intro p. split.
-   intros l p0 pp0. inversion_clear pp0.
-    inversion H0.
-    eauto. 
-    inversion H0. 
-    inversion H0. 
-   intros l p' pp'. simpl. eauto. 
+   coinduction R H.
+   intros p; split; intros l p' pp'; simpl; inverse_trans; eauto.
  Qed.
  
  (** * Equivalence closure *)
@@ -158,7 +154,7 @@ Module CCS(Export M: N).
  Proof.
    assert (H: unary_ctx (prf a) <= s).
     intro R. apply leq_unary_ctx. intros p q Hpq.
-    intros l p' pp'. inversion pp'. subst; eauto. 
+    intros l p' pp'. inverse_trans. eauto. 
    apply Coinduction, by_Symmetry. apply unary_sym.
     rewrite H at 1. now rewrite <-b_T.
  Qed.
@@ -169,7 +165,7 @@ Module CCS(Export M: N).
  Proof.
    apply Coinduction, by_Symmetry. apply unary_sym.
    intro R. apply (leq_unary_ctx (new a)). intros p q Hpq l p0 Hp0.
-   inversion_clear Hp0. destruct (proj1 Hpq _ _ H) as [???]. eexists. eauto.
+   inverse_trans. destruct (proj1 Hpq _ _ H1) as [???]. eexists. eauto.
    apply (id_t B). now apply in_unary_ctx.
  Qed.
  Global Instance newt_t a: forall R, Proper (t R ==> t R) (new a) := unary_proper (@new_t a).
@@ -179,9 +175,9 @@ Module CCS(Export M: N).
  Proof.
    apply Coinduction, by_Symmetry. apply binary_sym.
    intro R. apply (leq_binary_ctx pls).
-   intros p q Hpq r s Hrs l p0 Hp0. inversion_clear Hp0.
-   destruct (proj1 Hpq _ _ H) as [? ? ?]. eexists. eauto. now apply (id_T b).
-   destruct (proj1 Hrs _ _ H) as [? ? ?]. eexists. eauto. now apply (id_T b).
+   intros p q Hpq r s Hrs l p0 Hp0. inverse_trans.
+   destruct (proj1 Hpq _ _ H3) as [? ? ?]. eexists. eauto. now apply (id_T b).
+   destruct (proj1 Hrs _ _ H3) as [? ? ?]. eexists. eauto. now apply (id_T b).
  Qed.
  Global Instance plst_t: forall R, Proper (t R ==> t R ==> t R) pls := binary_proper pls_t.
  
@@ -210,11 +206,9 @@ Module CCS(Export M: N).
  (** preliminary results *)
  Lemma unfold_rep p: rep p ~ par (rep p) p.
  Proof.
-   coinduction R H. clear H. split.
-   intros l p' pp'. inversion_clear pp'.
-   eexists. eassumption. reflexivity.
-   simpl. intros l p' pp'. eexists. constructor; eassumption.
-   reflexivity.
+   step. split; intros l p' pp'; simpl.
+   inversion_clear pp'. eauto.
+   eexists. constructor; eassumption. reflexivity.
  Qed.
 
  (** Proposition 8.2(i) *)
@@ -296,22 +290,19 @@ Module CCS(Export M: N).
  Proof.
    (* coinduction not necessary, just used here to exploit symmetry argument *)
    coinduction' R H.
-   intros p q l p' pp'. inversion_clear pp'; eauto.
+   intros p q l p' pp'. inverse_trans; eauto.
  Qed.
 
  Lemma plsA p q r: p+(q+r) ~ (p+q)+r.
  Proof.
    step.
-   split; intros l p' pp'; simpl;
-     inversion_clear pp'; eauto;
-       inversion_clear H; eauto. 
+   split; intros l p' pp'; simpl; inverse_trans; eauto. 
  Qed.
 
  Lemma pls0p p: 0 + p ~ p.
  Proof.
    step.
-   split; intros l p' pp'; simpl; eauto. 
-   inversion_clear pp'; eauto. inversion H. 
+   split; intros l p' pp'; simpl; inverse_trans; eauto. 
  Qed.
    
  Lemma plsp0 p: p + 0 ~ p.
@@ -327,64 +318,70 @@ Module CCS(Export M: N).
  Lemma plsI p: p+p ~ p.
  Proof.
    step.
-   split; intros l p' pp'; simpl; eauto. 
-   inversion_clear pp'; eauto.
- Qed.
-
- Lemma prf_tau_new c p: prf tau (new c p) ~ new c (prf (out c) 0 | prf (inp c) p).
- Proof.
-   step.
-   split; intros l p' pp'; simpl. 
-   inversion_clear pp'. eexists. eauto. now rewrite par0p. 
-   inversion_clear pp'. inversion_clear H.
-   - inversion H1; subst; clear H1.
-     congruence.
-   - inversion H1; subst; clear H1.
-     congruence.
-   - inversion H1; subst; clear H1.
-     inversion H2; subst; clear H2.
-     eexists. eauto. now rewrite par0p. 
-   - inversion H1.
+   split; intros l p' pp'; simpl; inverse_trans; eauto. 
  Qed.
 
  Lemma new_new: forall a b p, new a (new b p) ~ new b (new a p).
  Proof.
-   coinduction' R H. intros a b p l p' pp'.
-   inversion_clear pp'. inversion_clear H0. eauto.
+   coinduction' R H.
+   intros a b p l p' pp'. inverse_trans; eauto.
  Qed.
 
+ (* special case of [new_gc] below *)
  Lemma new_zer: forall a, new a 0 ~ 0.
  Proof.
    intro. step. 
-   split; intros l' p' pp'; simpl;
-     inversion_clear pp'; eauto; 
-       inversion_clear H; eauto.
+   split; intros l' p' pp'; simpl; inverse_trans; eauto. 
  Qed.
 
  Lemma new_prf: forall a l p, fresh a l -> new a (prf l p) ~ prf l (new a p).
  Proof.
-   intros a l p F. step. 
-   split; intros l' p' pp'; simpl;
-     inversion pp'; subst; clear pp'; eauto.
-   inversion_clear H1. eauto.
+   intros. step. 
+   split; intros l' p' pp'; simpl; inverse_trans; eauto. 
  Qed.
 
  Lemma new_prf': forall a l p, ~ fresh a l -> new a (prf l p) ~ 0.
  Proof.
-   intros a l p F. step. 
-   split; intros l' p' pp'; simpl;
-     inversion pp'; subst; clear pp'; eauto.
-   inversion H1; subst. tauto. 
+   intros. step. 
+   split; intros l' p' pp'; simpl; inverse_trans; eauto.
  Qed.
  
  Lemma new_sum: forall a p q, new a (p + q) ~ new a p + new a q.
  Proof.
-   intros a p q. step. 
-   split; intros l' p' pp'; simpl;
-     inversion_clear pp'; eauto;
-       inversion_clear H; eauto.
+   intros. step.
+   split; intros l' p' pp'; simpl; inverse_trans; eauto. 
  Qed.
 
+ Lemma prf_tau_new c p q: prf tau (new c (p | q)) ~ new c (prf (out c) p | prf (inp c) q).
+ Proof.
+   step.
+   split; intros l p' pp'; simpl; inverse_trans; eauto.
+ Qed.
+
+ Lemma prf_tau_new_i c p: freshp c p -> prf tau p ~ new c (prf (out c) 0 | prf (inp c) p).
+ Admitted.
+ 
+ Lemma prf_tau_new_o c p: freshp c p -> prf tau p ~ new c (prf (out c) p | prf (inp c) 0).
+ Admitted.
+
+ Lemma prf_prf_tau_new_o l c p q:
+   fresh c l ->
+   prf l (prf tau (new c (p | q))) ~ new c (prf l (prf (out c) p) | prf (inp c) q).
+ Proof.
+   intro H. step.
+   split; intros l' p' pp'; simpl; inverse_trans;
+     eexists; eauto; apply prf_tau_new.
+ Qed.
+
+ Lemma prf_prf_tau_new_i l c p q:
+   fresh c l ->
+   prf l (prf tau (new c (p | q))) ~ new c (prf (out c) p | prf l (prf (inp c) q)).
+ Proof.
+   intro H. step.
+   split; intros l' p' pp'; simpl; inverse_trans;
+     eexists; eauto; apply prf_tau_new.
+ Qed.
+ 
  CoInductive freshp a: S -> Prop :=
    | fresh_trans: forall p, (forall l p', trans p l p' -> fresh a l /\ freshp a p') -> freshp a p.
 
@@ -393,11 +390,10 @@ Module CCS(Export M: N).
    intro a.
    set (R nap p := freshp a p /\ nap = new a p).
    cut (R <= gfp b). intros H p Hp. now apply H.
-   apply coinduction. intros nap p [Hp ->]. split; intros l p' pp'; simpl.
-   - inversion_clear pp'. eexists. eauto. refine (id_t b R _ _ _); split; trivial.
-     destruct Hp. firstorder.
+   apply leq_gfp. intros nap p [Hp ->]. split; intros l p' pp'; simpl. 
+   - inverse_trans. eexists. eauto. destruct Hp. firstorder.
    - destruct Hp as [? H]. specialize (H _ _ pp') as [? ?].
-     eexists. eauto. now refine (id_t b R _ _ _).
+     unfold R. eauto. 
  Qed.
 
  Lemma new_par: forall a p q, freshp a q -> new a (p|q) ~ new a p | q.
@@ -406,24 +402,11 @@ Module CCS(Export M: N).
    set (R x y := exists p q, freshp a q /\ x = new a (p | q) /\ y = new a p | q).
    cut (R <= gfp b). intros H p q Hp. apply H. do 2 eexists; eauto. 
    apply leq_gfp. intros x y (p&q&Hq&->&->).
-   split; intros l p' pp'; simpl; inversion_clear pp'.
-   - inversion_clear H.
-     unfold R; eauto 10. 
-     destruct Hq as [? Hq]. specialize (Hq _ _ H1) as [? ?].
-     unfold R; eauto 10. 
-     destruct Hq as [? Hq]. specialize (Hq _ _ H2) as [? ?].
-     unfold R; eauto 10. 
-     destruct Hq as [? Hq]. specialize (Hq _ _ H2) as [? ?].
-     unfold R; eauto 10. 
-   - inversion_clear H. unfold R; eauto 10. 
-   - destruct Hq as [? Hq]. specialize (Hq _ _ H) as [? ?].
+   split; intros l p' pp'; simpl; inverse_trans;
+     (match goal with
+      | H: trans q _ _ |- _ => destruct Hq as [? Hq]; specialize (Hq _ _ H) as [??]
+      | _ => idtac end);
      unfold R; eauto 10.
-   - inversion_clear H.
-     destruct Hq as [? Hq]. specialize (Hq _ _ H0) as [? ?].
-     unfold R; eauto 10. 
-   - inversion_clear H.
-     destruct Hq as [? Hq]. specialize (Hq _ _ H0) as [? ?].
-     unfold R; eauto 10. 
  Qed.
   
  Proposition rep_trans2 p l p0:
@@ -438,101 +421,100 @@ Module CCS(Export M: N).
    - right. split; trivial. do 4 eexists. eauto. split. eauto. rewrite E. aac_reflexivity.
    - right. split; trivial. do 4 eexists. eauto. split. eauto. rewrite E. aac_reflexivity.
  Qed.
+
+ Ltac inverse_trans' :=
+   match goal with
+   | H: trans ?p _ _ |- _ =>
+     lazymatch p with
+     | rep _ => apply rep_trans2 in H as [(?&?&?)|(?&?&?&?&?&?&?)];
+                (try congruence); (try subst); inverse_trans'
+     | _ => tryif is_var p then fail else inversion H; subst; clear H; inverse_trans'
+     end
+   | _ => idtac
+   end.
  
  Lemma rep_pls p q: !(p+q) ~ !p | !q.
  Proof.
-   coinduction R H. split; intros a p' T.
-   - apply rep_trans2 in T as [(p''&T&E)|(->&b&po&pi&To&Ti&E)].
-     -- inversion_clear T;
-          (eexists; [eauto | rewrite E, H; aac_reflexivity]). 
-     -- inversion_clear To; inversion_clear Ti;
-          (eexists; [eauto | rewrite E, H; aac_reflexivity]).
-   - inversion_clear T.
-     -- apply rep_trans2 in H0 as [(p''&T&E)|(->&b&po&pi&To&Ti&E)];
-          (eexists; [eauto | simpl; rewrite E, H; aac_reflexivity]).
-     -- apply rep_trans2 in H0 as [(p''&T&E)|(->&b&po&pi&To&Ti&E)];
-          (eexists; [eauto | simpl; rewrite E, H; aac_reflexivity]).
-     -- apply rep_trans2 in H0 as [(p''&To&Ei)|(D&_)]; [|discriminate].
-        apply rep_trans2 in H1 as [(q''&Ti&Eo)|(D&_)]; [|discriminate]. 
-        eexists. eauto. simpl. rewrite Ei, Eo, H; aac_reflexivity.
-     -- apply rep_trans2 in H0 as [(p''&To&Ei)|(D&_)]; [|discriminate].
-        apply rep_trans2 in H1 as [(q''&Ti&Eo)|(D&_)]; [|discriminate]. 
-        eexists. eauto. simpl. rewrite Ei, Eo, H; aac_reflexivity.
+   coinduction R H.
+   split; intros a p' T; simpl; inverse_trans';
+     (eexists; [eauto|rewrite ?H1, ?H3, H; aac_reflexivity]).
  Qed.
+
+ Lemma rep_invol p: !!p ~ !p.
+ Admitted.
 
  Lemma rep_idem p: !p ~ !p | !p.
  Proof. now rewrite <-rep_pls, plsI. Qed.
 
  Lemma rep_par p q: !(p | q) ~ !p | !q.
  Proof.
-   coinduction R H. split; intros a p' T.
-   - apply rep_trans2 in T as [(p''&T&E)|(->&b&po&pi&To&Ti&E)].
-     -- inversion T; subst; clear T;
-          (eexists; [eauto | rewrite E, H; try aac_rewrite <-unfold_rep; aac_reflexivity]). 
-     -- inversion To; subst; clear To; inversion Ti; subst; clear Ti;
-          (eexists; [eauto | rewrite E, H; do 2 aac_rewrite <-unfold_rep; aac_reflexivity]). 
-   - inversion_clear T.
-     -- apply rep_trans2 in H0 as [(p''&T&E)|(->&b&po&pi&To&Ti&E)];
-          (eexists; [eauto | simpl; rewrite E, H; repeat aac_rewrite <-unfold_rep; aac_reflexivity]).
-     -- apply rep_trans2 in H0 as [(p''&T&E)|(->&b&po&pi&To&Ti&E)];
-          (eexists; [eauto | simpl; rewrite E, H; repeat aac_rewrite <-unfold_rep; aac_reflexivity]).
-     -- apply rep_trans2 in H0 as [(p''&To&Ei)|(D&_)]; [|discriminate].
-        apply rep_trans2 in H1 as [(q''&Ti&Eo)|(D&_)]; [|discriminate]. 
-        eexists. eauto. simpl. rewrite Ei, Eo, H; aac_reflexivity.
-     -- apply rep_trans2 in H0 as [(p''&To&Ei)|(D&_)]; [|discriminate].
-        apply rep_trans2 in H1 as [(q''&Ti&Eo)|(D&_)]; [|discriminate]. 
-        eexists. eauto. simpl. rewrite Ei, Eo, H; aac_reflexivity.
+   coinduction R H.
+   split; intros a p' T; simpl; inverse_trans';
+     (eexists; [eauto|rewrite ?H1, ?H3, H; repeat aac_rewrite <-unfold_rep; aac_reflexivity]).
  Qed.
 
  Lemma rep_prf_trans a p b p': trans (!prf a p) b p' -> a=b /\ p' ~ p | !prf a p.
  Proof.
    intro T. apply rep_trans in T as [p'' T E].
-   inversion T; subst.
-   - inversion H3; subst. split; trivial. rewrite E.
-     rewrite unfold_rep at 2. aac_reflexivity. 
-   - inversion H3; subst. split; trivial. rewrite E.
-     rewrite unfold_rep at 2. aac_reflexivity. 
-   - inversion H1. inversion H4. congruence.
-   - inversion H1. inversion H4. congruence.
+   inverse_trans; split; trivial;
+     rewrite E; rewrite unfold_rep at 2.
+   aac_reflexivity. aac_reflexivity. 
  Qed.
  
  Lemma rep_prf a p: !prf a p ~ prf a (p | !prf a p).
  Proof.
    coinduction R H. split; intros b p' T.
    - apply rep_prf_trans in T as [<- E]. eexists. eauto. now rewrite E.
-   - inversion_clear T. eexists. eauto. simpl. aac_reflexivity. 
+   - inverse_trans. eexists. eauto. simpl. aac_reflexivity. 
  Qed.
 
  Goal forall a p q, !prf a (p | prf a q) | !prf a (prf a p | q) ~ !prf a p | !prf a q.
  Proof.
-   intros. coinduction R H. split; intros b p' T.
-   - inversion_clear T.
-     -- apply rep_prf_trans in H0 as [<- E].
-        eexists. apply t_par_l. eauto. 
-        rewrite E. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
-     -- apply rep_prf_trans in H0 as [<- E].
-        eexists. apply t_par_r. eauto.
-        rewrite E. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
-     -- apply rep_prf_trans in H0 as [? _].
-        apply rep_prf_trans in H1 as [? _].
-        congruence. 
-     -- apply rep_prf_trans in H0 as [? _].
-        apply rep_prf_trans in H1 as [? _].
-        congruence.
-   - inversion_clear T.
-     -- apply rep_prf_trans in H0 as [<- E].
-        eexists. apply t_par_l. eauto. simpl.
-        rewrite E. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
-     -- apply rep_prf_trans in H0 as [<- E].
-        eexists. apply t_par_r. eauto. simpl.
-        rewrite E. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
-     -- apply rep_prf_trans in H0 as [? _].
-        apply rep_prf_trans in H1 as [? _].
-        congruence. 
-     -- apply rep_prf_trans in H0 as [? _].
-        apply rep_prf_trans in H1 as [? _].
-        congruence.
+   intros. coinduction R H.
+   split; intros b p' T; simpl; inverse_trans'.
+   - eexists. apply t_par_l; eauto.
+     rewrite H1. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
+   - eexists. apply t_par_r; eauto.
+     rewrite H1. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
+   - eexists. apply t_par_l; eauto.
+     rewrite H1. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
+   - eexists. apply t_par_r; eauto.
+     rewrite H1. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
  Qed.
+
+ Infix ">>" := (prf) (at level 30, right associativity). 
+
+ (* NOTE: while the freshness assumptions about b are merely bureaucratic,
+    x<>y is crucial in the equality below:
+    this equation fails otherwise, thus proving that bisimularity is not closed under substitutions, (even in the absence of sum).
+ *)
+ Goal forall x y b p,
+     b<>x -> b<>y -> freshp b p ->
+     x<>y -> 
+     !(out y >> inp x >> tau >> p) | !(inp x >> out y >> tau >> p)
+     ~ 
+     !new b (out y >> out b >> 0 | inp x >> inp b >> p).
+ Proof.
+   intros x y b p BX BY BP XY.
+   assert (BX': fresh b (inp x)) by congruence. 
+   assert (BY': fresh b (out y)) by congruence. 
+   coinduction R H.
+   split; intros l p' pp'; simpl; inverse_trans'; try congruence; 
+     eexists; eauto; rewrite H1; clear H1; aac_rewrite H; apply part_t; trivial.
+   - rewrite <-prf_prf_tau_new_i by assumption.
+     rewrite new_gc by admit.
+     aac_reflexivity.
+   - rewrite <-prf_prf_tau_new_o by assumption. 
+     rewrite new_gc by admit.
+     aac_reflexivity.
+   - rewrite <-prf_prf_tau_new_i by assumption.
+     rewrite new_gc by admit.
+     aac_reflexivity.
+   - rewrite <-prf_prf_tau_new_o by assumption. 
+     rewrite new_gc by admit.
+     aac_reflexivity.
+ Admitted.   
+   
  
 End CCS.
 
