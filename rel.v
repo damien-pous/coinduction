@@ -21,16 +21,6 @@ Lemma leq_pair A (x y: A) (R: A -> A -> Prop): R x y <-> pair x y <= R.
 Proof. firstorder congruence. Qed.
 Global Opaque pair.
 
-(* TOBEREMOVED *)
-Lemma in_pair0 A b (x y: A): t b (pair x y) x y.
-Proof. now apply (id_t b), leq_pair. Qed.
-Lemma in_pair1 I A b (x y: I -> A): forall i, t b (sup_all (fun i => pair (x i) (y i))) (x i) (y i).
-Proof. intros. apply (id_t b). rewrite leq_pair. now repeat eapply eleq_xsup_all. Qed.
-Lemma in_pair2 I J A b (x y: forall i: I, J i -> A): forall i j, t b (sup_all (fun i => sup_all (fun j => pair (x i (j i)) (y i (j i))))) (x i (j i)) (y i (j i)).
-Proof. intros. apply (id_t b). rewrite leq_pair. now repeat eapply eleq_xsup_all. Qed.
-Lemma in_pair3 I J K A b (x y: forall i: I, forall j: J i, K i j -> A): forall i j k, t b (sup_all (fun i => sup_all (fun j => sup_all (fun k => pair (x i (j i) (k i (j i))) (y i (j i) (k i (j i))))))) (x i (j i) (k i (j i))) (y i (j i) (k i (j i))).
-Proof. intros. apply (id_t b). rewrite leq_pair. now repeat eapply eleq_xsup_all. Qed.
-
 (** squaring function *)
 Program Definition square {A}: mon (A -> A -> Prop) :=
   {| body R x y := exists2 z, R x z & R z y |}.
@@ -157,61 +147,23 @@ Proof. simpl. firstorder. Qed.
                                                  
 
 
+(** * reification tools to transform propositions in the language of
+      gallina into relation containments, e.g.,
 
-(* TOBEREMOVED *)
-Module nondep.
-  
- Notation T := (list Set).
- 
- Fixpoint fT (L: T) A :=
-   match L with
-   | nil => A
-   | cons B Q => B -> fT Q A
-   end.
- Fixpoint pT (L: T) A (R: A -> A -> Prop): fT L A -> fT L A -> Prop :=
-   match L with
-   | nil => R
-   | cons B Q => fun x y => forall i, pT Q R (x i) (y i)
-   end.
- Fixpoint rT (L: T) A: fT L A -> fT L A -> A -> A -> Prop :=
-   match L with
-   | nil => @pair A
-   | cons B Q => fun x y => sup_all (fun i => rT Q (x i) (y i))
-   end.
- Lemma eT (L: T) A R: forall x y: fT L A, pT L R x y <-> rT L x y <= R.
- Proof.
-   induction L; intros x y; simpl pT.
-   - apply leq_pair.
-   - setoid_rewrite IHL. symmetry. apply sup_all_spec. 
- Qed.
+      [forall x y, R (x+y) (y+x+x)]
+      becomes 
+      [sup_all (fun x => sup_all (fun y => pair (x+y) (y+x+x))) <== R]
 
- Lemma coinduction: forall L A x y (b: mon (A -> A -> Prop)),
-     (forall R, pT L (t b R) x y -> pT L (b (t b R)) x y) ->
-     pT L (gfp b) x y.
- Proof.
-   intros.
-   rewrite eT. apply coinduction.
-   rewrite <-eT. apply H.
-   rewrite eT. apply id_t. 
- Qed.
- 
- Section s.
-  Variable b: mon (nat -> nat -> Prop).
-  Goal forall n m (* (k: n=m) *), gfp b (n+n) (m+m).
-    apply (coinduction
-            (cons nat (cons nat nil))
-             (fun n m => n+n)
-             (fun n m => m+m)             
-          ).
-    simpl pT. intros R HR. 
-  Abort.
- End s.
+      [forall x y, R (x+y) y /\ R x y]
+      becomes 
+      [sup_all (fun x => sup_all (fun y => cup (pair (x+y) y) (pair x y)))) <== R]
 
-End nondep.
-
-
+*)
 Module reification.
-  
+
+ (* depedently typed syntax for formulas of the shape
+    forall x y, R t1 t2 /\ forall z, R s1 s2
+  *)
  Inductive T :=
  | hol
  | abs(B: Type)(Q: B -> T)
@@ -243,9 +195,11 @@ Module reification.
    - setoid_rewrite H. symmetry. apply sup_all_spec.
    - rewrite IHL1, IHL2. symmetry. apply cup_spec.  
  Qed.
+ (* TODO: remove *)
  Lemma eT' (L: T) A (x y: fT L A) (b: mon (A -> A -> Prop)): pT L (t b (rT L x y)) x y.
  Proof. rewrite eT. apply id_t. Qed.
 
+ (** the enhanced coinduction lemma expressed in this reified form *)
  Lemma coinduction L A x y (b: mon (A -> A -> Prop)):
      (forall R, pT L (t b R) x y -> pT L (b (t b R)) x y) ->
      pT L (gfp b) x y.
@@ -255,7 +209,9 @@ Module reification.
    rewrite <-eT. apply H.
    rewrite eT. apply id_t.
  Qed.
- 
+
+ (* idea: the above lemma can be used as follows: *)
+ (*
  Section s.
   Variable b: mon (nat -> nat -> Prop).
   Goal forall n m (k: n=m), gfp b (n+n) (m+m) /\ forall k, gfp b (n+k) (k+m).
@@ -270,22 +226,40 @@ Module reification.
     simpl pT. intros R HR. 
   Abort.
  End s.
+ *)
 
 End reification.
 
-
-(** * Friendly [coinduction] tactic, for relations
- (it just goes back and forth between the above encoding of sets of pairs, 
-  and Coq's native symbols)
- *)
-
+(** resulting [coinduction] tactic *)
 Declare ML Module "cawu_reification". 
 Ltac coinduction R H :=
   cawu_reify; apply reification.coinduction; simpl reification.pT; intros R H.
 
+(* TODO: remove? *)
+Ltac step :=
+  match goal with
+  | |- gfp ?b ?x ?y => apply (proj2 (gfp_fp b x y))
+  | |- body (t ?b) ?R ?x ?y => apply (bt_t b R x y)
+  end;
+  simpl body.
+
+(** variant where the implicit bisimulation candidate is symmetric (for symmetric functions only) *)
+(* TODO: improve *)
+Ltac coinduction' R H :=
+  cawu_reify; rewrite reification.eT; apply coinduction;
+  match goal with |- _ <= body ?b _ =>
+  apply by_symmetry; [solve [simpl; firstorder]|];
+  rewrite <-reification.eT; set (R := reification.rT _ _ _);
+  pose proof (reification.eT' _ _ _ b: reification.pT _ (t b R) _ _) as H;
+  clearbody R; simpl reification.pT in *
+  end.
+
+
+
 (* tests *)
+(*
 Section s.
-  Variables b c: mon (nat -> nat -> Prop).
+  Variables b c s: mon (nat -> nat -> Prop).
   Goal gfp b 5 6.
     coinduction R H.
   Abort.
@@ -298,76 +272,18 @@ Section s.
   Goal gfp b 5 6 /\ gfp c 7 8.
     Fail cawu_reify.
   Abort.
+  Goal forall n m, gfp (cap s (converse o s o converse)) n m.
+  Proof.
+    coinduction' R H. 
+  Abort.  
 End s.
+*)
 
-
-
-Ltac coinduction_old R H :=
-  let rec init := 
-    lazymatch goal with
-    | |- forall x, _ => let x:=fresh x in intro x; init; revert x; rewrite <-sup_all_spec
-    | |- gfp _ _ _ =>  rewrite leq_pair
-  end in
-  init; apply coinduction; 
-  match goal with |- ?Rb <= body ?b _ => 
-    set (R:=Rb) at -1;
-    repeat setoid_rewrite sup_all_spec;
-    setoid_rewrite <-leq_pair;
-    first
-      [ pose proof (in_pair0 b _ _: t b R _ _) as H
-      | pose proof (in_pair1 b _ _: forall i, t b R _ _) as H
-      | pose proof (in_pair2 b _ _: forall i j, t b R _ _) as H
-      | pose proof (in_pair3 b _ _: forall i j k, t b R _ _) as H
-      ];
-    clearbody R 
-  end.
-
-Ltac step :=
-  match goal with
-  | |- gfp ?b ?x ?y => apply (proj2 (gfp_fp b x y))
-  | |- body (t ?b) ?R ?x ?y => apply (bt_t b R x y)
-  end;
-  simpl body.
-
-Ltac coinduction' R H :=
-  cawu_reify; rewrite reification.eT; apply coinduction;
-  match goal with |- _ <= body ?b _ =>
-  apply by_symmetry; [solve [simpl; firstorder]|];
-  rewrite <-reification.eT; set (R := reification.rT _ _ _);
-  pose proof (reification.eT' _ _ _ b: reification.pT _ (t b R) _ _) as H;
-  clearbody R; simpl reification.pT in *
-  end.
-
-Section a.
-Variable s: mon (nat -> nat -> Prop). 
-Goal forall n m, gfp (cap s (converse o s o converse)) n m.
-Proof.
-  coinduction' R H. 
-Abort.
-End a.
-  
+(* old symmetry-solving tactic *)
+(*
 Ltac solve_sym := solve [
   repeat (rewrite converse_sup; apply sup_spec; intros);
   rewrite converse_pair;
   repeat (eapply eleq_xsup_all; intros);
   trivial ] || idtac "could not get symmetry automatically".
-
-Ltac coinduction_old' R H :=
-  let rec init := 
-    lazymatch goal with
-    | |- forall x, _ => let x:=fresh x in intro x; init; revert x; rewrite <-sup_all_spec
-    | |- gfp _ _ _ =>  rewrite leq_pair
-  end in
-  init; apply coinduction;
-  match goal with |- ?Rb <= body ?b _ => 
-    set (R:=Rb) at -1; apply by_symmetry; [ solve_sym |
-    repeat setoid_rewrite sup_all_spec;
-    setoid_rewrite <-leq_pair;
-    first
-      [ pose proof (in_pair0 b _ _: t b R _ _) as H
-      | pose proof (in_pair1 b _ _: forall i, t b R _ _) as H
-      | pose proof (in_pair2 b _ _: forall i j, t b R _ _) as H
-      | pose proof (in_pair3 b _ _: forall i j k, t b R _ _) as H
-      ];
-    clearbody R ]
-  end.
+*)

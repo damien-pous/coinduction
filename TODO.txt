@@ -3,6 +3,8 @@ renaming (explicit on processes / as a LTS construction)
 intro patterns for coinduction
 improve coinduction'
 
+accumulate and step tactics
+
 
 symmetry arguments
 derive [mon X] as a sublattice of [X -> X]
