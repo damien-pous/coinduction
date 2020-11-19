@@ -1,10 +1,10 @@
-(*******************************************************************)
-(*  This is part of CAWU, it is distributed under the terms        *)
-(*    of the GNU Lesser General Public License version 3           *)
-(*              (see file LICENSE for more details)                *)
-(*                                                                 *)
-(*  Copyright 2016: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
-(*******************************************************************)
+(************************************************************************)
+(*     This is part of CAWU, it is distributed under the terms          *)
+(*       of the GNU Lesser General Public License version 3             *)
+(*                (see file LICENSE for more details)                   *)
+(*                                                                      *)
+(*  Copyright 2016-2020: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
+(************************************************************************)
 
 (** * Example: CCS *)
 
@@ -400,13 +400,11 @@ Module CCS(Export M: N).
 
  Lemma new_gc: forall a p, freshp a p -> new a p ~ p.
  Proof.
-   intro a.
-   set (R nap p := freshp a p /\ nap = new a p).
-   cut (R <= gfp b). intros H p Hp. now apply H.
-   apply leq_gfp. intros nap p [Hp ->]. pose proof (freshp_trans Hp) as H.
+   intro a. coinduction R HR; intros p Hp.
+   pose proof (freshp_trans Hp) as H.
    split; intros l p' pp'; simpl. 
-   - inverse_trans. eexists. eauto. firstorder.
-   - specialize (H _ _ pp') as [? ?]. unfold R. eauto. 
+   - inverse_trans. eexists. eauto. apply HR. eapply H; eauto. 
+   - specialize (H _ _ pp') as [? ?]. eauto. 
  Qed.
 
  Lemma prf_tau_new_i c p: freshp c p -> prf tau p ~ new c (prf (out c) 0 \| prf (inp c) p).
@@ -425,15 +423,12 @@ Module CCS(Export M: N).
 
  Lemma new_par: forall a p q, freshp a q -> new a (p\|q) ~ (new a p) \| q.
  Proof.
-   intro a.
-   set (R x y := (exists p q, freshp a q /\ x = new a (p \| q) /\ y = new a p \| q)%ccs).
-   cut (R <= gfp b). intros H p q Hp. apply H. do 2 eexists; eauto. 
-   apply leq_gfp. intros x y (p&q&Hq&->&->).
+   intro a. coinduction R HR. intros p q Hq.
    split; intros l p' pp'; simpl; inverse_trans;
      (match goal with
       | H: trans q _ _ |- _ => destruct (freshp_trans Hq H) as [??]
       | _ => idtac end);
-     unfold R; eauto 10.
+     eauto 10.
  Qed.
   
  Proposition rep_trans2 p l p0:
@@ -563,30 +558,29 @@ End acd.
 Module Import CCSacd := CCS(acd).
 
 (** The four processes from Section 4 *)
-CoFixpoint A := prf (inp a) (prf (inp c) D)
-      with B := prf (inp a) (prf (inp c) C)
-      with C := prf (out a) (par A C)
-      with D := prf (out a) (par B D).
+CoFixpoint A := inp a >> inp c >> D
+      with B := inp a >> inp c >> C
+      with C := out a >> (A \| C)
+      with D := out a >> (B \| D).
 
-Lemma dA: A = prf (inp a) (prf (inp c) D).
+Lemma dA: A = inp a >> inp c >> D.
 Proof. apply Sd. Qed.
-Lemma dB: B = prf (inp a) (prf (inp c) C).
+Lemma dB: B = inp a >> inp c >> C.
 Proof. apply Sd. Qed.
-Lemma dC: C = prf (out a) (par A C).
+Lemma dC: C = out a >> (A \| C).
 Proof. apply Sd. Qed.
-Lemma dD: D = prf (out a) (par B D).
+Lemma dD: D = out a >> (B \| D).
 Proof. apply Sd. Qed.
 
 (** Utilities to factor code thanks to the (relative) determinism of the considered processe *)
-Lemma bAB (R: S -> S -> Prop): R (prf (inp c) D) (prf (inp c) C) -> b R A B.
+Lemma bAB (R: S -> S -> Prop): R (inp c >> D) (inp c >> C) -> b R A B.
 Proof. intro. rewrite dA, dB. split; intros ? ? T; inversion_clear T; eauto. Qed.
-Lemma bCD (R: S -> S -> Prop): R (par A C) (par B D) -> b R C D.
+Lemma bCD (R: S -> S -> Prop): R (A \| C) (B \| D) -> b R C D.
 Proof. intro. rewrite dC, dD. split; intros ? ? T; inversion_clear T; eauto. Qed.
 
 (** the proof by enhanced bisimulation *)
-Goal cup (pair A B) (pair C D) <= gfp b.
-Proof.
-  apply coinduction. apply cup_spec. split; apply ->leq_pair. 
-  apply bAB. apply prft_t. symmetry. apply (id_t b). apply <-leq_pair. apply cup_r.
-  apply bCD. apply part_t; apply (id_t b); apply <-leq_pair. apply cup_l. apply cup_r.
+Goal A ~ B /\ C ~ D.
+  coinduction R H. split.
+  apply bAB. apply prft_t. now symmetry. 
+  apply bCD. now apply part_t. 
 Qed.

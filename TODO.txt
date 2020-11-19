@@ -1,6 +1,7 @@
 renaming (explicit on processes / as a LTS construction)
 
-hypotheses in rel.coinduction
+intro patterns for coinduction
+improve coinduction'
 
 
 symmetry arguments

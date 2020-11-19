@@ -1,7 +1,12 @@
 -R . cawu
+-I .
+
 lattice.v
 coinduction.v
 rel.v
 divergence.v
 streams.v
 ccs.v
+
+cawu_reification_i.mlg
+cawu_reification.mlpack

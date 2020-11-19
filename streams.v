@@ -1,16 +1,17 @@
-(*******************************************************************)
-(*  This is part of CAWU, it is distributed under the terms        *)
-(*    of the GNU Lesser General Public License version 3           *)
-(*              (see file LICENSE for more details)                *)
-(*                                                                 *)
-(*  Copyright 2016: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
-(*******************************************************************)
+(************************************************************************)
+(*     This is part of CAWU, it is distributed under the terms          *)
+(*       of the GNU Lesser General Public License version 3             *)
+(*                (see file LICENSE for more details)                   *)
+(*                                                                      *)
+(*  Copyright 2016-2020: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
+(************************************************************************)
 
 (** * Example: Rutten's stream calculus *)
 
 Require Import Psatz.
 Require Import coinduction rel.
 Set Implicit Arguments.
+
 
 Module streams.
  (** we consieder streams of natural numbers, for the sake of simplicity *)

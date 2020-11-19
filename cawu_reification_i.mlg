@@ -1,0 +1,121 @@
+(*******************************************************************)
+(*    This is part of CAWU, it is distributed under the            *)
+(* terms of the GNU Lesser General Public License version 3        *)
+(*            (see file LICENSE for more details)                  *)
+(*                                                                 *)
+(*  Copyright 2020: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
+(*******************************************************************)
+
+
+DECLARE PLUGIN "cawu_reification"
+
+{
+
+
+open Ltac_plugin
+open EConstr
+
+(* pick an element in an hashtbl *)
+let hashtbl_pick t = Hashtbl.fold (fun i x -> function None -> Some (i,x) | acc -> acc) t None
+
+(* path to CAWU modules *)
+let cawu_path = ["cawu"]
+
+(* raise an error in Coq *)
+let error s = Printf.kprintf (fun s -> CErrors.user_err (Pp.str s)) ("[cawu] "^^s)
+
+(* access to Coq constants *)
+let get_const dir s = 
+  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Coqlib.find_reference "cawu.reify" dir s)))
+
+(* make an application using a lazy value *)
+let force_app f = fun x -> mkApp (Lazy.force f,x)
+
+(* build a partial application *)
+let partial_app n c ca = if n=0 then c else mkApp(c,Array.sub ca 0 n)
+
+(* creating OCaml functions from Coq ones *)
+let get_fun_1 d s = let v = get_const d s in fun x -> force_app v [|x|]
+let get_fun_2 d s = let v = get_const d s in fun x y -> force_app v [|x;y|]
+let get_fun_3 d s = let v = get_const d s in fun x y z -> force_app v [|x;y;z|]
+let get_fun_4 d s = let v = get_const d s in fun x y z t -> force_app v [|x;y;z;t|]
+let get_fun_5 d s = let v = get_const d s in fun x y z t u -> force_app v [|x;y;z;t;u|]
+let get_fun_6 d s = let v = get_const d s in fun x y z t u r -> force_app v [|x;y;z;t;u;r|]
+let get_fun_7 d s = let v = get_const d s in fun x y z t u r w -> force_app v [|x;y;z;t;u;r;w|]
+let get_fun_8 d s = let v = get_const d s in fun x y z t u r w p -> force_app v [|x;y;z;t;u;r;w;p|]
+let get_fun_9 d s = let v = get_const d s in fun x y z t u r w p q -> force_app v [|x;y;z;t;u;r;w;p;q|]
+let get_fun_10 d s = let v = get_const d s in fun x y z t u r w p q q1 -> force_app v [|x;y;z;t;u;r;w;p;q;q1|]
+let get_fun_11 d s = let v = get_const d s in fun x y z t u r w p q q1 q2 -> force_app v [|x;y;z;t;u;r;w;p;q;q1;q2|]
+let get_fun_12 d s = let v = get_const d s in fun x y z t u r w p q q1 q2 q3 -> force_app v [|x;y;z;t;u;r;w;p;q;q1;q2;q3|]
+let get_fun_13 d s = let v = get_const d s in fun x y z t u r w p q q1 q2 q3 q4 -> force_app v [|x;y;z;t;u;r;w;p;q;q1;q2;q3;q4|]
+let get_fun_14 d s = let v = get_const d s in fun x y z t u r w p q q1 q2 q3 q4 q5 -> force_app v [|x;y;z;t;u;r;w;p;q;q1;q2;q3;q4;q5|]
+
+(* Coq constants *)
+module Coq = struct
+  let and_ = get_const ["Coq"; "Init"; "Logic"] "and"
+  let pair = get_fun_4 ["Coq"; "Init"; "Datatypes"] "pair"
+end
+
+(* cawu.rel.reification Coq module *)
+module Cawu = struct
+  let path = cawu_path@["rel";"reification"]
+  let t    = get_const path "T"
+  let hol  = get_const path "hol"
+  let abs  = get_fun_2 path "abs"
+  let cnj  = get_fun_2 path "cnj"
+  let ft   = get_fun_2 path "fT"
+  let pt   = get_fun_5 path "pT"
+  
+  let path = cawu_path@["coinduction"]
+  let gfp  = get_const path "gfp"
+end 
+
+open Constr
+open EConstr
+open Proofview
+
+let reify goal =
+  let goal = Goal.print goal in
+  let env = Tacmach.pf_env goal in
+  let sigma = Tacmach.project goal in
+  let get_type t = 
+    match kind sigma t with
+    | Prod(_,a,_) -> a
+    | _ -> error "coinductive object is not a relation"
+  in
+  let rec parse e =
+    match kind sigma e with
+    | Prod(i,b,q) ->
+       let (c,a,r,x,y) = parse q
+       in (Cawu.abs b (mkLambda(i,b,c)),
+           a,r,
+           mkLambda(i,b,x),
+           mkLambda(i,b,y))
+    | App(c,[|p1;p2|])
+         when c=Lazy.force Coq.and_ ->
+       let (c1,a1,r1,x1,y1) = parse p1 in
+       let (c2,a2,r2,x2,y2) = parse p2 in
+       if a1<>a2 || r1<>r2 then error "only one coinductive relation is allowed";
+       (Cawu.cnj c1 c2,
+        a1,r1,
+        Coq.pair (Cawu.ft c1 a1) (Cawu.ft c2 a2) x1 x2,
+        Coq.pair (Cawu.ft c1 a1) (Cawu.ft c2 a2) y1 y2)
+    | App(c,[|t;l;b;x;y|])
+             when c=Lazy.force Cawu.gfp ->
+       (Lazy.force Cawu.hol,
+        get_type t,
+        mkApp(c,[|t;l;b|]),
+        x,
+        y)
+    | _ -> error "unrecognised construct"
+  in
+  let (c,a,r,x,y) = parse (Tacmach.pf_concl goal) in
+  let p = Cawu.pt c a r x y in
+  (try tclTHEN (Unsafe.tclEVARS sigma) (Tactics.convert_concl ~check:true p DEFAULTcast)
+   with e -> Feedback.msg_warning (Printer.pr_leconstr_env env sigma p); raise e)
+
+}
+
+TACTIC EXTEND cawu_reify
+| [ "cawu_reify" ] -> { Goal.enter reify }
+END
