@@ -580,7 +580,7 @@ Proof. intro. rewrite dC, dD. split; intros ? ? T; inversion_clear T; eauto. Qed
 
 (** the proof by enhanced bisimulation *)
 Goal A ~ B /\ C ~ D.
-  coinduction R H. split.
+  coinduction R [AB CD]. split.
   apply bAB. apply prft_t. now symmetry. 
   apply bCD. now apply part_t. 
 Qed.

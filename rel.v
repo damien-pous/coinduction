@@ -232,8 +232,9 @@ End reification.
 
 (** resulting [coinduction] tactic *)
 Declare ML Module "cawu_reification". 
-Ltac coinduction R H :=
+Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
   cawu_reify; apply reification.coinduction; simpl reification.pT; intros R H.
+
 
 (* TODO: remove? *)
 Ltac step :=
@@ -255,30 +256,6 @@ Ltac coinduction' R H :=
   end.
 
 
-
-(* tests *)
-(*
-Section s.
-  Variables b c s: mon (nat -> nat -> Prop).
-  Goal gfp b 5 6.
-    coinduction R H.
-  Abort.
-  Goal gfp b 5 6 /\ gfp b 7 8.
-    coinduction R H.
-  Abort.
-  Goal forall n m (k: n=m), gfp b (n+n) (m+m) /\ forall k, gfp b (n+k) (k+m).
-    coinduction R H.
-  Abort.
-  Goal gfp b 5 6 /\ gfp c 7 8.
-    Fail cawu_reify.
-  Abort.
-  Goal forall n m, gfp (cap s (converse o s o converse)) n m.
-  Proof.
-    coinduction' R H. 
-  Abort.  
-End s.
-*)
-
 (* old symmetry-solving tactic *)
 (*
 Ltac solve_sym := solve [
@@ -287,3 +264,4 @@ Ltac solve_sym := solve [
   repeat (eapply eleq_xsup_all; intros);
   trivial ] || idtac "could not get symmetry automatically".
 *)
+
