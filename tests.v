@@ -8,21 +8,24 @@
 
 (** * tests for the reification tools  *)
 
-Require Import rel.
+Require Import coinduction rel.
 
 Section s.
   Variables b c s: mon (nat -> nat -> Prop).
-  Goal gfp b 5 6.
+  Infix "~" := (gfp b) (at level 80). 
+  Notation "x ~ [ R ] y" := (t b R x y) (at level 80). 
+  Notation "x .~ [ R ] y" := (b (body (t b) R) x y) (at level 80).
+  Goal 5 ~ 6.
     coinduction R H.
     Restart.
     coinduction R _. 
   Abort.
-  Goal gfp b 5 6 /\ gfp b 7 8.
+  Goal 5 ~ 6 /\ 7 ~ 8.
     coinduction R H.
     Restart.
     coinduction R [H H'].
   Abort.
-  Goal forall n m (k: n=m), gfp b (n+n) (m+m) /\ forall k, gfp b (n+k) (k+m).
+  Goal forall n m (k: n=m), n+n ~ m+m /\ forall k, n+k ~ k+m.
     coinduction R H.
   Abort.
   Goal gfp b 5 6 /\ gfp c 7 8.
@@ -32,5 +35,22 @@ Section s.
   Proof.
     coinduction' R H. 
   Abort.  
+
+  Import reification.
+  Goal 5 ~ 6.
+    coinduction R H.
+    cut (4 ~[R] 5). admit.
+    change (pT hol (t b R) 4 5).
+    rewrite eT.
+    apply accumulate.
+    rewrite <-eT.
+    set (R' := cup _ _). simpl pT.
+    assert (RR': R <= R') by now unfold R'; rewrite <-cup_l.
+    apply (Hbody (t b)) in RR'. apply RR' in H. clear RR'. 
+    pose proof (cup_r R _: _ <= R') as H'. rewrite <-eT in H'.
+    clearbody R'. simpl pT in H'. apply (id_t b) in H'.
+    clear R. rename R' into R. 
+  Abort.
+
 End s.
 
