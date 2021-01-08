@@ -57,6 +57,21 @@ Section s.
   Qed.
   Corollary Equivalence_gfp: Equivalence (gfp b).
   Proof Equivalence_t bot.
+
+  Lemma PreOrder_T f R: PreOrder (t (B b) f R).
+  Proof.
+    constructor.
+    intro. now apply (ftT_T f eq_t).
+    intros ? y ???. apply (ftT_T f square_t). exists y; assumption.
+  Qed.
+  Lemma PreOrder_t R: PreOrder (t b R).
+  Proof.
+    constructor.
+    intro. now apply (ft_t eq_t).
+    intros ? y ???. apply (ft_t square_t). exists y; assumption.
+  Qed.
+  Corollary PreOrder_gfp: PreOrder (gfp b).
+  Proof PreOrder_t bot.
 End s.
 
 
@@ -134,6 +149,43 @@ Proof. intro R. simpl. apply leq_binary_ctx. intros. now apply in_binary_ctx. Qe
 Lemma binary_proper S (f: S -> S -> S) b:
   binary_ctx f <= t b -> forall R, Proper (t b R ==> t b R ==> t b R) f.
 Proof. intros H R x x' Hx y y' Hy. apply (ft_t H). now apply (in_binary_ctx f). Qed.
+
+                                 
+(** ternary context: [unary_ctx f](R) = {(f x x', f y y') | x R y, x' R y' }  *)
+Program Definition ternary_ctx S (f: S -> S -> S -> S): mon (S -> S -> Prop) :=
+  {| body R := sup_all (fun x =>
+               sup_all (fun y => 
+               sup_all (fun z => 
+               sup (R x) (fun x' => 
+               sup (R y) (fun y' => 
+               sup (R z) (fun z' => pair (f x y z) (f x' y' z'))))))) |}.
+Next Obligation.
+  Transparent pair. Opaque plus.
+  cbv; firstorder subst; eauto 8.
+  Transparent plus. Opaque pair.
+Qed.
+
+Lemma leq_ternary_ctx S f R T:
+  @ternary_ctx S f R <= T <->
+  forall x x', R x x' -> forall y y', R y y' -> forall z z', R z z' -> T (f x y z) (f x' y' z').
+Proof.
+  unfold ternary_ctx. do 3 setoid_rewrite sup_all_spec.
+  do 3 setoid_rewrite sup_spec.
+  setoid_rewrite <-leq_pair. firstorder. 
+Qed.
+Lemma in_ternary_ctx S (f: S -> S -> S -> S) (R: S -> S -> Prop) x x' y y' z z':
+  R x x' -> R y y' -> R z z' -> ternary_ctx f R (f x y z) (f x' y' z').
+Proof. intros. now apply ->leq_ternary_ctx. Qed.
+Global Opaque ternary_ctx.
+
+(** such a function is always symmetric *)
+Lemma ternary_sym S (f: S -> S -> S -> S): compat converse (ternary_ctx f).
+Proof. intro R. simpl. apply leq_ternary_ctx. intros. now apply in_ternary_ctx. Qed.
+
+(** if it is below [t], then the function [f] always preserves [t R] *)
+Lemma ternary_proper S (f: S -> S -> S -> S) b:
+  ternary_ctx f <= t b -> forall R, Proper (t b R ==> t b R ==> t b R ==> t b R) f.
+Proof. intros H R x x' Hx y y' Hy z z' Hz. apply (ft_t H). now apply (in_ternary_ctx f). Qed.
 
 
 Transparent pair.

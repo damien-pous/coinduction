@@ -32,13 +32,15 @@ Class CompleteLattice (X: Type) := {
   cap_spec: forall x y z, leq z (cap x y) <-> (leq z x /\ leq z y);
   leq_bx: forall x, leq bot x;
   leq_xt: forall x, leq x top
-}.
-Infix "==" := weq (at level 70).
-Infix "<=" := leq.
+                                  }.
+Declare Scope cawu.
+Open Scope cawu.
+Infix "==" := weq (at level 70): cawu.
+Infix "<=" := leq: cawu.
 Notation sup_all f := (sup (fun _ => True) f).
 Notation inf_all f := (inf (fun _ => True) f).
-Hint Extern 0 => reflexivity.
-Hint Resolve leq_bx leq_xt.
+Hint Extern 0 => reflexivity: core.
+Hint Resolve leq_bx leq_xt: core.
  
 
 (** * Concrete instances *)
@@ -216,7 +218,7 @@ Section sup.
  Global Instance cup_weq: Proper (weq ==> weq ==> weq) cup := op_leq_weq_2.
 
 End sup.
-Hint Resolve cup_l cup_r.
+Hint Resolve cup_l cup_r: core.
 
 
 (** * Properties obtained by duality *)
@@ -275,7 +277,7 @@ Section inf.
  Global Instance cap_weq: Proper (weq ==> weq ==> weq) cap := op_leq_weq_2.
 
 End inf.
-Hint Resolve cap_l cap_r.
+Hint Resolve cap_l cap_r: core.
 
 (** * The complete lattice of monotone endofunctions *)
 
@@ -297,8 +299,8 @@ Section mon.
 
  (** identity and composition
      the monotonicity proof are transparent to get strong equalities
-     - [id o f = f o id = f], and
-     - [f o (g o h) = (f o g) o h]
+     - [id ° f = f ° id = f], and
+     - [f ° (g ° h) = (f ° g) ° h]
   *)
  Definition id: mon := {| 
    body x := x; 
@@ -309,7 +311,7 @@ Section mon.
    body := fun x => f (g x); 
    Hbody x y H := Hbody f _ _ (Hbody g _ _ H) 
  |}.
- Infix "o" := comp (at level 20).
+ Infix "°" := comp (at level 20): cawu.
  
  (** monotone endofunctions form a new complete lattice *)
  Global Program Instance CompleteLattice_mon: CompleteLattice mon := {|
@@ -345,40 +347,40 @@ Section mon.
  Proof. intros f f' Hf g g' Hg x. simpl. rewrite (Hg x). apply Hf. Qed.
  Global Instance comp_weq: Proper (weq ==> weq ==> weq) comp := op_leq_weq_2.
 
- Lemma compA f g h: f o (g o h) = (f o g) o h.
+ Lemma compA f g h: f ° (g ° h) = (f ° g) ° h.
  Proof. reflexivity. Qed.
- Lemma compIx f: id o f = f.
+ Lemma compIx f: id ° f = f.
  Proof. now case f. Qed. 
- Lemma compxI f: f o id = f.
+ Lemma compxI f: f ° id = f.
  Proof. now case f. Qed. 
 
  (** operations on [mon X] behave as expected on the left of compositions *)
- Lemma msup_o I f P h: sup P f o h == sup P (fun i: I => (f i) o h).
+ Lemma msup_o I f P h: sup P f ° h == sup P (fun i: I => (f i) ° h).
  Proof. now intro. Qed.
- Lemma mcup_o f g h: (cup f g) o h == cup (f o h) (g o h).
+ Lemma mcup_o f g h: (cup f g) ° h == cup (f ° h) (g ° h).
  Proof. now intro. Qed.
- Lemma mbot_o f: bot o f == bot.
+ Lemma mbot_o f: bot ° f == bot.
  Proof. now intro. Qed.
- Lemma minf_o I f P h: inf P f o h == inf P (fun i: I => (f i) o h).
+ Lemma minf_o I f P h: inf P f ° h == inf P (fun i: I => (f i) ° h).
  Proof. now intro. Qed.
- Lemma mcap_o f g h: (cap f g) o h == cap (f o h) (g o h).
+ Lemma mcap_o f g h: (cap f g) ° h == cap (f ° h) (g ° h).
  Proof. now intro. Qed. 
- Lemma mtop_o f: top o f == top.
+ Lemma mtop_o f: top ° f == top.
  Proof. now intro. Qed.
 
  (** instead, only one inclusion holds in general when they are on the left *)
- Lemma o_msup I f P h: sup P (fun i: I => h o (f i)) <= h o sup P f.
+ Lemma o_msup I f P h: sup P (fun i: I => h ° (f i)) <= h ° sup P f.
  Proof. intro. apply sup_spec. intros. apply h. eapply eleq_xsup; eauto. Qed.
- Lemma o_mcup f g h: cup (h o f) (h o g) <= h o (cup f g).
+ Lemma o_mcup f g h: cup (h ° f) (h ° g) <= h ° (cup f g).
  Proof. intro. apply cup_spec. split; apply h; now simpl. Qed.
- Lemma o_minf I f P h: h o inf P f <= inf P (fun i: I => h o (f i)).
+ Lemma o_minf I f P h: h ° inf P f <= inf P (fun i: I => h ° (f i)).
  Proof. intro. apply inf_spec. intros. apply h. eapply eleq_infx; eauto. Qed.
- Lemma o_mcap f g h: h o (cap f g) <= cap (h o f) (h o g).
+ Lemma o_mcap f g h: h ° (cap f g) <= cap (h ° f) (h ° g).
  Proof. intro. apply cap_spec. split; apply h; now simpl. Qed.
 
 End mon.
 Arguments mon X {L}.
-Infix "o" := comp (at level 20).
+Infix "°" := comp (at level 20): cawu.
 Global Opaque cup bot cap top.  (* TODO: check that we still need this *)
 
 (** application as a function [X->X]->X->X is monotone in its two arguments *)

@@ -109,8 +109,8 @@ Module streams.
  (** * shuffle product *)
  Parameter shuf: S -> S -> S.
  Infix "@" := shuf (at level 40, left associativity).
- Hypothesis hd_shuf: forall s t, hd (s @ t) = (hd s * hd t)%nat.
- Hypothesis tl_shuf: forall s t, tl (s @ t) = tl s @ t + s @ tl t.
+ Axiom hd_shuf: forall s t, hd (s @ t) = (hd s * hd t)%nat.
+ Axiom tl_shuf: forall s t, tl (s @ t) = tl s @ t + s @ tl t.
  Ltac ssimpl := repeat (rewrite ?hd_shuf, ?tl_shuf; simpl hd; simpl tl).
 
  Lemma shuf_0x: forall x, c 0 @ x ~ c 0.
@@ -178,8 +178,8 @@ Module streams.
  (** * convolution product *)
  Parameter mult: S -> S -> S.
  Infix "*" := mult.
- Hypothesis hd_mult: forall s t, hd (s * t) = (hd s * hd t)%nat.
- Hypothesis tl_mult: forall s t, tl (s * t) = tl s * t + c (hd s) * tl t.
+ Axiom hd_mult: forall s t, hd (s * t) = (hd s * hd t)%nat.
+ Axiom tl_mult: forall s t, tl (s * t) = tl s * t + c (hd s) * tl t.
  Ltac msimpl := repeat (rewrite ?hd_mult, ?tl_mult; simpl hd; simpl tl).
 
  Lemma mult_0x: forall x, c 0 * x ~ c 0.
@@ -279,7 +279,7 @@ Module streams.
     now rewrite mult_0x, mult_x0, plusC, HR.
  Qed.
 
- CoFixpoint X := cons 0 (c 1).
+ Definition X := cons 0 (c 1).
 
  Theorem expand x: x ~ c (hd x) + X * tl x.
  Proof.

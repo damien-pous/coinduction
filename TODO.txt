@@ -1,12 +1,12 @@
-renaming (explicit on processes / as a LTS construction)
+extract ccs and streams as separate packages?
+add renaming in CCS ? (explicit on processes / as a LTS construction)
 
 intro patterns for coinduction
-improve coinduction'
+
+improve coinduction' / symmetry arguments
 
 accumulate and step tactics
 
-
-symmetry arguments
 derive [mon X] as a sublattice of [X -> X]
 
 

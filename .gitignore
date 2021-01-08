@@ -9,6 +9,7 @@
 html
 _build
 .merlin
+depgraph.*
 Makefile.coq
 Makefile.coq.conf
 cawu_reification_i.ml
