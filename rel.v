@@ -289,11 +289,24 @@ Module reification.
    - split. trivial. intro H; apply H. apply leq_bx.
    - simpl pTs. simpl merge. rewrite cup_spec, IHLs, eT. tauto.
  Qed.
+ Fixpoint tsnoc {A} Ls L x y :=
+   match Ls with
+   | tnil _ => tcons L x y (tnil A)
+   | tcons L' x' y' Ls => tcons L' x' y' (tsnoc Ls L x y)
+   end.
+ Lemma merge_tsnoc A Ls L x y: merge (@tsnoc A Ls L x y) == merge (tcons L x y Ls).
+ Proof.
+   induction Ls.
+   - reflexivity.
+   - simpl tsnoc. simpl merge.
+     rewrite IHLs. simpl merge. now rewrite cupA, (cupC (rT _ _ _)), <-cupA.
+ Qed.
  Lemma accumulate_ A Ls L x y (b: mon (A -> A -> Prop)):
-     (forall R, pTs (tcons L x y Ls) (t b R) (pT L (b (t b R)) x y)) ->
+     (forall R, pTs (tsnoc Ls L x y) (t b R) (pT L (b (t b R)) x y)) ->
      (forall R, pTs Ls (t b R) (pT L (t b R) x y)).
  Proof.
    setoid_rewrite eTs.
+   setoid_rewrite merge_tsnoc. 
    intros H R HR. rewrite eT. apply accumulate. 
    rewrite <-eT. apply H. simpl merge. rewrite cup_spec. split.
    rewrite <-cup_r. apply id_t.
@@ -333,11 +346,11 @@ Ltac solve_sym := solve [
 *)
 
 (** accumulation tactic *)
-Ltac xaccumulate R H' tbR :=
+Ltac xaccumulate R tbR :=
   lazymatch goal with
-  | H: context[tbR _ _] |- _ => revert H; xaccumulate R H' tbR; intro H
+  | H: context[tbR _ _] |- _ => revert H; xaccumulate R tbR; intro H
   | _ => accumulate_reify; revert R; apply reification.accumulate_; intro R;
-         simpl reification.pTs; simpl reification.pT; intros H'
+         simpl reification.pTs; simpl reification.pT
   end.
 
 Tactic Notation "accumulate" simple_intropattern(H) :=
@@ -345,7 +358,7 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
   match goal with
     |- reification.pT _ ?tbR _ _ =>
     match tbR with
-    | body (t _) ?R => xaccumulate R H tbR
+    | body (t _) ?R => xaccumulate R tbR; intros H
     end
   end.
 
@@ -357,5 +370,3 @@ Ltac step :=
   | |- body (t ?b) ?R ?x ?y => apply (bt_t b R x y)
   end;
   simpl body.
-
-

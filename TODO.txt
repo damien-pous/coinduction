@@ -2,9 +2,7 @@ extract ccs and streams as separate packages?
 
 add renaming in CCS ? (explicit on processes / as a LTS construction)
 
-introduce hypothesis last in accumulation
-
-preserve name of bound variables
+preserve names of bound variables
 
 arbitrary arity / dependent predicates
 
