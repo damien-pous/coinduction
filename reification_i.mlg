@@ -1,13 +1,4 @@
-(*******************************************************************)
-(*    This is part of CAWU, it is distributed under the            *)
-(* terms of the GNU Lesser General Public License version 3        *)
-(*            (see file LICENSE for more details)                  *)
-(*                                                                 *)
-(*  Copyright 2020: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
-(*******************************************************************)
-
-
-DECLARE PLUGIN "cawu_reification"
+DECLARE PLUGIN "reification"
 
 {
 
@@ -18,15 +9,15 @@ open EConstr
 (* pick an element in an hashtbl *)
 let hashtbl_pick t = Hashtbl.fold (fun i x -> function None -> Some (i,x) | acc -> acc) t None
 
-(* path to CAWU modules *)
-let cawu_path = ["cawu"]
+(* path to Coinduction modules *)
+let lib_path = ["Coinduction"]
 
 (* raise an error in Coq *)
-let error s = Printf.kprintf (fun s -> CErrors.user_err (Pp.str s)) ("[cawu] "^^s)
+let error s = Printf.kprintf (fun s -> CErrors.user_err (Pp.str s)) ("[coinduction] "^^s)
 
 (* access to Coq constants *)
 let get_const dir s = 
-  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Coqlib.find_reference "cawu.reify" dir s)))
+  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Coqlib.find_reference "coinduction.reify" dir s)))
 
 (* make an application using a lazy value *)
 let force_app f = fun x -> mkApp (Lazy.force f,x)
@@ -56,25 +47,32 @@ module Coq = struct
   let pair = get_fun_4 ["Coq"; "Init"; "Datatypes"] "pair"
 end
 
-(* cawu.rel.reification Coq module *)
-module Cawu = struct
-  let path = cawu_path@["rel";"reification"]
-  let t    = get_const path "T"
-  let hol  = get_const path "hol"
-  let abs  = get_fun_2 path "abs"
-  let cnj  = get_fun_2 path "cnj"
-  let ft   = get_fun_2 path "fT"
-  let pt   = get_fun_5 path "pT"
-  
-  let path = cawu_path@["coinduction"]
-  let gfp  = get_const path "gfp"
+(* Coinduction.rel.reification Coq module *)
+module Coinduction = struct
+  let path  = lib_path@["rel";"reification"]
+  let t     = get_const path "T"
+  let hol   = get_const path "hol"
+  let abs   = get_fun_2 path "abs"
+  let cnj   = get_fun_2 path "cnj"
+  let ft    = get_fun_2 path "fT"
+  let pt    = get_fun_5 path "pT"
+  let pt_   = get_const path "pT"
+  let pts   = get_fun_4 path "pTs"
+  let tnil  = get_fun_1 path "tnil"
+  let tcons = get_fun_5 path "tcons"
+            
+  let path  = lib_path@["lattice"]
+  let body  = get_const path "body"
+            
+  let path  = lib_path@["coinduction"]
+  let gfp   = get_const path "gfp"
 end 
 
 open Constr
 open EConstr
 open Proofview
 
-let reify goal =
+let reify mode goal =
   let goal = Goal.print goal in
   let env = Tacmach.pf_env goal in
   let sigma = Tacmach.project goal in
@@ -87,7 +85,7 @@ let reify goal =
     match kind sigma e with
     | Prod(i,b,q) ->
        let (c,a,r,x,y) = parse q
-       in (Cawu.abs b (mkLambda(i,b,c)),
+       in (Coinduction.abs b (mkLambda(i,b,c)),
            a,r,
            mkLambda(i,b,x),
            mkLambda(i,b,y))
@@ -96,26 +94,56 @@ let reify goal =
        let (c1,a1,r1,x1,y1) = parse p1 in
        let (c2,a2,r2,x2,y2) = parse p2 in
        if a1<>a2 || r1<>r2 then error "only one coinductive relation is allowed";
-       (Cawu.cnj c1 c2,
+       (Coinduction.cnj c1 c2,
         a1,r1,
-        Coq.pair (Cawu.ft c1 a1) (Cawu.ft c2 a2) x1 x2,
-        Coq.pair (Cawu.ft c1 a1) (Cawu.ft c2 a2) y1 y2)
+        Coq.pair (Coinduction.ft c1 a1) (Coinduction.ft c2 a2) x1 x2,
+        Coq.pair (Coinduction.ft c1 a1) (Coinduction.ft c2 a2) y1 y2)
     | App(c,[|t;l;b;x;y|])
-             when c=Lazy.force Cawu.gfp ->
-       (Lazy.force Cawu.hol,
+         when mode=`Coinduction &&
+                c=Lazy.force Coinduction.gfp ->
+       (Lazy.force Coinduction.hol,
         get_type t,
         mkApp(c,[|t;l;b|]),
         x,
         y)
+    | App(c,[|t;l;b;r;x;y|])
+         when mode<>`Coinduction &&
+                c=Lazy.force Coinduction.body ->
+       (Lazy.force Coinduction.hol,
+        get_type t,
+        mkApp(c,[|t;l;b;r|]),
+        x,
+        y)
     | _ -> error "unrecognised construct"
   in
-  let (c,a,r,x,y) = parse (Tacmach.pf_concl goal) in
-  let p = Cawu.pt c a r x y in
-  (try tclTHEN (Unsafe.tclEVARS sigma) (Tactics.convert_concl ~check:true p DEFAULTcast)
-   with e -> Feedback.msg_warning (Printer.pr_leconstr_env env sigma p); raise e)
-
+  let rec parse_acc e =
+    match kind sigma e with
+    | Prod(_,l,q) ->
+       let (l,a1,r1,x,y) = parse l in
+       let (q,a2,r2,p) = parse_acc q in
+       if a1<>a2 || r1<>r2 then error "only one coinductive relation is allowed";
+       (Coinduction.tcons a1 l x y q, a1, r1, p)
+    | App(f,[|_;a;r;_;_|])
+         when f=Lazy.force Coinduction.pt_ ->
+       (Coinduction.tnil a, a, r, e)
+    | _ -> error "unrecognised construct"
+  in
+  if mode <> `Accumulate then
+    let (c,a,r,x,y) = parse (Tacmach.pf_concl goal) in
+    let p = Coinduction.pt c a r x y in
+    (try tclTHEN (Unsafe.tclEVARS sigma) (Tactics.convert_concl ~check:true p DEFAULTcast)
+     with e -> Feedback.msg_warning (Printer.pr_leconstr_env env sigma p); raise e)
+  else
+    let (c,a,r,p) = parse_acc (Tacmach.pf_concl goal) in
+    let p = Coinduction.pts a c r p in
+    (try tclTHEN (Unsafe.tclEVARS sigma) (Tactics.convert_concl ~check:true p DEFAULTcast)
+     with e -> Feedback.msg_warning (Printer.pr_leconstr_env env sigma p); raise e)
+    
+    
 }
 
-TACTIC EXTEND cawu_reify
-| [ "cawu_reify" ] -> { Goal.enter reify }
+TACTIC EXTEND coinduction_reify
+| [ "coinduction_reify" ] -> { Goal.enter (reify `Coinduction) }
+| [ "symmetric_reify" ] -> { Goal.enter (reify `Symmetric) }
+| [ "accumulate_reify" ] -> { Goal.enter (reify `Accumulate) }
 END

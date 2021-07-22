@@ -1,11 +1,3 @@
-(*******************************************************************)
-(*  This is part of CAWU, it is distributed under the terms        *)
-(*    of the GNU Lesser General Public License version 3           *)
-(*              (see file LICENSE for more details)                *)
-(*                                                                 *)
-(*  Copyright 2016: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
-(*******************************************************************)
-
 (** * Basic theory of complete lattices  *)
 
 Require Export Setoid Morphisms.
@@ -33,14 +25,14 @@ Class CompleteLattice (X: Type) := {
   leq_bx: forall x, leq bot x;
   leq_xt: forall x, leq x top
                                   }.
-Declare Scope cawu.
-Open Scope cawu.
-Infix "==" := weq (at level 70): cawu.
-Infix "<=" := leq: cawu.
+Declare Scope lattice.
+Open Scope lattice.
+Infix "==" := weq (at level 70): lattice.
+Infix "<=" := leq: lattice.
 Notation sup_all f := (sup (fun _ => True) f).
 Notation inf_all f := (inf (fun _ => True) f).
-Hint Extern 0 => reflexivity: core.
-Hint Resolve leq_bx leq_xt: core.
+Global Hint Extern 0 => reflexivity: core.
+Global Hint Resolve leq_bx leq_xt: core.
  
 
 (** * Concrete instances *)
@@ -74,7 +66,7 @@ Program Instance CompleteLattice_fun {A X} {L: CompleteLattice X}: CompleteLatti
      bot a := bot;
      top a := top
   |}.
-Next Obligation.
+Next Obligation. 
   constructor.
    now intros f x. 
    intros f g h H H' x. now transitivity (g x).
@@ -218,7 +210,7 @@ Section sup.
  Global Instance cup_weq: Proper (weq ==> weq ==> weq) cup := op_leq_weq_2.
 
 End sup.
-Hint Resolve cup_l cup_r: core.
+Global Hint Resolve cup_l cup_r: core.
 
 
 (** * Properties obtained by duality *)
@@ -277,7 +269,7 @@ Section inf.
  Global Instance cap_weq: Proper (weq ==> weq ==> weq) cap := op_leq_weq_2.
 
 End inf.
-Hint Resolve cap_l cap_r: core.
+Global Hint Resolve cap_l cap_r: core.
 
 (** * The complete lattice of monotone endofunctions *)
 
@@ -311,7 +303,7 @@ Section mon.
    body := fun x => f (g x); 
    Hbody x y H := Hbody f _ _ (Hbody g _ _ H) 
  |}.
- Infix "°" := comp (at level 20): cawu.
+ Infix "°" := comp (at level 20): lattice.
  
  (** monotone endofunctions form a new complete lattice *)
  Global Program Instance CompleteLattice_mon: CompleteLattice mon := {|
@@ -380,7 +372,7 @@ Section mon.
 
 End mon.
 Arguments mon X {L}.
-Infix "°" := comp (at level 20): cawu.
+Infix "°" := comp (at level 20): lattice.
 Global Opaque cup bot cap top.  (* TODO: check that we still need this *)
 
 (** application as a function [X->X]->X->X is monotone in its two arguments *)

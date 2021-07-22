@@ -1,14 +1,14 @@
 extract ccs and streams as separate packages?
+
 add renaming in CCS ? (explicit on processes / as a LTS construction)
 
-intro patterns for coinduction
+introduce hypothesis last in accumulation
 
-improve coinduction' / symmetry arguments
+preserve name of bound variables
 
-accumulate and step tactics
+arbitrary arity / dependent predicates
 
 derive [mon X] as a sublattice of [X -> X]
-
 
 ordinals
 

@@ -1,11 +1,3 @@
-(************************************************************************)
-(*     This is part of CAWU, it is distributed under the terms          *)
-(*       of the GNU Lesser General Public License version 3             *)
-(*                (see file LICENSE for more details)                   *)
-(*                                                                      *)
-(*  Copyright 2016-2020: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
-(************************************************************************)
-
 (** * Example: Rutten's stream calculus *)
 
 Require Import Psatz.
@@ -14,7 +6,8 @@ Set Implicit Arguments.
 
 
 Module streams.
- (** we consieder streams of natural numbers, for the sake of simplicity *)
+  
+ (** we consider streams of natural numbers, for the sake of simplicity *)
  CoInductive S := cons(n: nat)(q: S).
 
  Definition hd (s: S) := let 'cons n _ := s in n. 
@@ -107,6 +100,8 @@ Module streams.
  
 
  (** * shuffle product *)
+ (** shuffle product cannot be defined as easily as one could expect in Coq, 
+     because of the guard condition. Here we simply assume its existence for the sake of simplicity *)
  Parameter shuf: S -> S -> S.
  Infix "@" := shuf (at level 40, left associativity).
  Axiom hd_shuf: forall s t, hd (s @ t) = (hd s * hd t)%nat.
@@ -176,6 +171,8 @@ Module streams.
  
  
  (** * convolution product *)
+ (* like shuffle product, convolution product cannot be defined as easily as one could expect in Coq.
+    Here we simply assume its existence for the sake of simplicity *)
  Parameter mult: S -> S -> S.
  Infix "*" := mult.
  Axiom hd_mult: forall s t, hd (s * t) = (hd s * hd t)%nat.

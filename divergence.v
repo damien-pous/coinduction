@@ -1,11 +1,3 @@
-(*******************************************************************)
-(*  This is part of CAWU, it is distributed under the terms        *)
-(*    of the GNU Lesser General Public License version 3           *)
-(*              (see file LICENSE for more details)                *)
-(*                                                                 *)
-(*  Copyright 2016: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
-(*******************************************************************)
-
 (** * Hur et al.' toy example about divergence 
 
 See C. Hur, G. Neis, D. Dreyer, and V. Vafeiadis. 

@@ -1,12 +1,4 @@
-(************************************************************************)
-(*     This is part of CAWU, it is distributed under the terms          *)
-(*       of the GNU Lesser General Public License version 3             *)
-(*                (see file LICENSE for more details)                   *)
-(*                                                                      *)
-(*  Copyright 2016-2020: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
-(************************************************************************)
-
-(** * Example: CCS *)
+(** * Example: Milner's CCS *)
 
 Require Import coinduction rel.
 From AAC_tactics Require Import AAC.
@@ -22,7 +14,7 @@ Module CCS(Export M: N).
  CoInductive label := tau | out(a: N) | inp(a: N).
   
  (** CCS processes. Instead of using process constants, as in the paper, 
-   we use coinductive definition. In other words, we will use Coq's corecursive 
+   we use a coinductive definition. In other words, we use Coq's corecursive 
    definitions to encode CCS recursion *)
  CoInductive S :=
  | nil
@@ -58,15 +50,15 @@ Module CCS(Export M: N).
  | t_new: forall a p l p', trans p l p' -> fresh a l -> trans (new a p) l (new a p')
  | t_rep: forall p l p', trans (!p \| p) l p' -> trans (!p) l p'
  .
- Hint Resolve t_prf t_par_l t_par_r t_par_lr t_par_rl t_new t_pls_l t_pls_r: ccs.
+ Global Hint Resolve t_prf t_par_l t_par_r t_par_lr t_par_rl t_new t_pls_l t_pls_r: ccs.
 
  Lemma t_rep': forall p l p', trans p l p' -> trans (!p) l (!p \| p').
  Proof. intros. apply t_rep; eauto with ccs. Qed.
- Hint Resolve t_rep': ccs.
+ Global Hint Resolve t_rep': ccs.
 
  Lemma t_rep'': forall p a po pi, trans p (out a) po -> trans p (inp a) pi -> trans (!p) tau (!p \| po \| pi).
  Proof. intros. apply t_rep; eauto with ccs. Qed.
- Hint Resolve t_rep'': ccs.
+ Global Hint Resolve t_rep'': ccs.
  
  (** dumb utilities for corecursion *)
  Definition id_S(p: S): S :=
@@ -106,7 +98,7 @@ Module CCS(Export M: N).
  (** Some valid laws  *)
  Lemma parC: forall p q, p \| q ~ q \| p.
  Proof.
-   coinduction' R H. 
+   coinduction R H. symmetric.
    intros p q l p' pp'. inverse_trans; eauto with ccs.
  Qed.
 
@@ -293,7 +285,7 @@ Module CCS(Export M: N).
  Lemma plsC: forall p q, p+q ~ q+p.
  Proof.
    (* coinduction not necessary, just used here to exploit symmetry argument *)
-   coinduction' R H.
+   coinduction R H. symmetric.
    intros p q l p' pp'. inverse_trans; eauto with ccs.
  Qed.
 
@@ -327,7 +319,7 @@ Module CCS(Export M: N).
 
  Lemma new_new: forall a b p, new a (new b p) ~ new b (new a p).
  Proof.
-   coinduction' R H.
+   coinduction R H. symmetric.
    intros a b p l p' pp'. inverse_trans; eauto with ccs.
  Qed.
 

@@ -1,11 +1,3 @@
-(************************************************************************)
-(*     This is part of CAWU, it is distributed under the terms          *)
-(*       of the GNU Lesser General Public License version 3             *)
-(*                (see file LICENSE for more details)                   *)
-(*                                                                      *)
-(*  Copyright 2016-2020: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
-(************************************************************************)
-
 (** * Utilities for working with binary relations  *)
 
 Require Import coinduction.
@@ -247,12 +239,9 @@ Module reification.
    - setoid_rewrite H. symmetry. apply sup_all_spec.
    - rewrite IHL1, IHL2. symmetry. apply cup_spec.  
  Qed.
- (* TODO: remove *)
- Lemma eT' (L: T) A (x y: fT L A) (b: mon (A -> A -> Prop)): pT L (t b (rT L x y)) x y.
- Proof. rewrite eT. apply id_t. Qed.
 
  (** the enhanced coinduction lemma expressed in this reified form *)
- Lemma coinduction L A x y (b: mon (A -> A -> Prop)):
+ Lemma coinduction_ L A x y (b: mon (A -> A -> Prop)):
      (forall R, pT L (t b R) x y -> pT L (b (t b R)) x y) ->
      pT L (gfp b) x y.
  Proof.
@@ -267,7 +256,7 @@ Module reification.
  Section s.
   Variable b: mon (nat -> nat -> Prop).
   Goal forall n m (k: n=m), gfp b (n+n) (m+m) /\ forall k, gfp b (n+k) (k+m).
-    apply (coinduction
+    apply (coinduction_
             (abs nat (fun n =>
              abs nat (fun m => 
              abs (n=m) (fun _ => 
@@ -278,14 +267,87 @@ Module reification.
     simpl pT. intros R HR. 
   Abort.
  End s.
- *)
+  *)
 
+ (** accumulation rule *)
+ Inductive Ts A :=
+ | tnil
+ | tcons(L: T)(x y: fT L A)(Q: Ts A).
+ Fixpoint pTs A (Ls: Ts A) (R: A -> A -> Prop) (P: Prop): Prop :=
+   match Ls with
+   | tnil _ => P
+   | tcons L x y Ls => pT L R x y -> @pTs _ Ls R P
+   end.
+ Fixpoint merge A (Ls: Ts A): A -> A -> Prop :=
+   match Ls with
+   | tnil _ => bot
+   | tcons L x y Ls => cup (rT L x y) (merge Ls)
+   end.
+ Lemma eTs A Ls R P: @pTs A Ls R P <-> (merge Ls <= R -> P).
+ Proof.
+   induction Ls.
+   - split. trivial. intro H; apply H. apply leq_bx.
+   - simpl pTs. simpl merge. rewrite cup_spec, IHLs, eT. tauto.
+ Qed.
+ Lemma accumulate_ A Ls L x y (b: mon (A -> A -> Prop)):
+     (forall R, pTs (tcons L x y Ls) (t b R) (pT L (b (t b R)) x y)) ->
+     (forall R, pTs Ls (t b R) (pT L (t b R) x y)).
+ Proof.
+   setoid_rewrite eTs.
+   intros H R HR. rewrite eT. apply accumulate. 
+   rewrite <-eT. apply H. simpl merge. rewrite cup_spec. split.
+   rewrite <-cup_r. apply id_t.
+   rewrite <-cup_l. assumption. 
+ Qed.
+
+ (** for reasoning by symmetry *)
+ Lemma by_symmetry_ {L A} {b s: mon (A -> A -> Prop)} {S: Sym_from converse b s} R x y:
+     (forall i j, rT L x y j i -> rT L x y i j) ->
+     pT L (s (t b R)) x y ->
+     pT L (b (t b R)) x y.
+ Proof. rewrite 2!eT. intros C H. now apply by_symmetry. Qed.
+ 
 End reification.
 
 (** resulting [coinduction] tactic *)
-Declare ML Module "cawu_reification". 
-Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
-  cawu_reify; apply reification.coinduction; simpl reification.pT; intros R H.
+Declare ML Module "reification". 
+Tactic Notation "coinduction" simple_intropattern(R) simple_intropattern(H) :=
+  coinduction_reify; apply reification.coinduction_;
+  simpl reification.pT; intros R H.
+
+(** tactic for reasoning on symmetric candidates with symmetric functions *)
+Tactic Notation "symmetric" "using" tactic(tac) :=
+  symmetric_reify; apply reification.by_symmetry_;
+  [simpl reification.rT; tac | simpl reification.pT].
+
+Tactic Notation "symmetric" :=
+  symmetric using (solve[clear;firstorder]||fail "could not get symmetry automatically").
+
+(* old symmetry-solving tactic *)
+(*
+Ltac solve_sym := solve [
+  repeat (rewrite converse_sup; apply sup_spec; intros);
+  rewrite converse_pair;
+  repeat (eapply eleq_xsup_all; intros);
+  trivial ] || idtac "could not get symmetry automatically".
+*)
+
+(** accumulation tactic *)
+Ltac xaccumulate R H' tbR :=
+  lazymatch goal with
+  | H: context[tbR _ _] |- _ => revert H; xaccumulate R H' tbR; intro H
+  | _ => accumulate_reify; revert R; apply reification.accumulate_; intro R;
+         simpl reification.pTs; simpl reification.pT; intros H'
+  end.
+
+Tactic Notation "accumulate" simple_intropattern(H) :=
+  symmetric_reify;
+  match goal with
+    |- reification.pT _ ?tbR _ _ =>
+    match tbR with
+    | body (t _) ?R => xaccumulate R H tbR
+    end
+  end.
 
 
 (* TODO: remove? *)
@@ -296,24 +358,4 @@ Ltac step :=
   end;
   simpl body.
 
-(** variant where the implicit bisimulation candidate is symmetric (for symmetric functions only) *)
-(* TODO: improve *)
-Ltac coinduction' R H :=
-  cawu_reify; rewrite reification.eT; apply coinduction;
-  match goal with |- _ <= body ?b _ =>
-  apply by_symmetry; [solve [simpl; firstorder]|];
-  rewrite <-reification.eT; set (R := reification.rT _ _ _);
-  pose proof (reification.eT' _ _ _ b: reification.pT _ (t b R) _ _) as H;
-  clearbody R; simpl reification.pT in *
-  end.
-
-
-(* old symmetry-solving tactic *)
-(*
-Ltac solve_sym := solve [
-  repeat (rewrite converse_sup; apply sup_spec; intros);
-  rewrite converse_pair;
-  repeat (eapply eleq_xsup_all; intros);
-  trivial ] || idtac "could not get symmetry automatically".
-*)
 

@@ -1,21 +1,8 @@
-(*******************************************************************)
-(*  This is part of CAWU, it is distributed under the terms        *)
-(*    of the GNU Lesser General Public License version 3           *)
-(*              (see file LICENSE for more details)                *)
-(*                                                                 *)
-(*  Copyright 2016: Damien Pous. (CNRS, LIP - ENS Lyon, UMR 5668)  *)
-(*******************************************************************)
+(** * Abstract theory of coinduction 
 
-(** * Coinduction All the Way Up 
-
-  A new abstract theory of coinduction, encompassing
-  - enhancements of the coinductive proof method
-  - second order coinduction reasonning about enhancements
-  - parametrised coinduction, as proposed by Hur et al.
-  - powerful symmetry arguments
-  - compatibility and respectfulness
-
-  See the corresponding paper on HAL:
+  See
+  Coinduction All the Way Up. Damien Pous. In Proc. LICS, 2016.
+  http://dx.doi.org/10.1145/2933575.2934564
   https://hal.archives-ouvertes.fr/hal-01259622/document
 
 *)
@@ -304,10 +291,13 @@ Section symmetry.
  Lemma compat_if_fi f: compat i f -> compat f i.
  Proof. intro H; apply Switch. now rewrite compA, <-H, <-compA, invol. Qed.
   
- (** [b] is assumed to be of the shape [s /\ i s i]  *)
+ (** [b] is assumed to be of the shape [s /\ i s i]  
+     we use a class to record such a fact, so that the end-user may use syntactically different definitions and yet be able to declare a function as being of this shape.
+  *)
 
- Variable s: mon X. 
- Notation b := (cap s (i ° s ° i)).
+ Context {b s: mon X}.
+ Class Sym_from := sym_from: b == (cap s (i ° s ° i)).
+ Context {H: Sym_from}.
  Notation B := (B b).
  Notation T := (t B).
  Notation t := (t b).
@@ -315,6 +305,7 @@ Section symmetry.
  (** [i] is compatible  *)
  Lemma compat_invol: compat b i.
  Proof.
+   rewrite sym_from. 
    rewrite o_mcap, 2compA, invol.
    rewrite mcap_o, <-2compA, invol.
    now rewrite capC. 
@@ -328,7 +319,7 @@ Section symmetry.
  Proposition by_symmetry x y: i x <= x -> x <= s (t y) -> x <= b (t y).
  Proof.
    assert(it: i ° t == t). apply antisym'. apply ft_t, invol_t. apply Switch.
-   intros Hx Hxy. apply cap_spec. split. assumption.
+   intros Hx Hxy. rewrite (sym_from (t y)). apply cap_spec. split. assumption.
    apply switch. rewrite Hx, Hxy. now rewrite (it y).
  Qed. 
 
@@ -336,6 +327,7 @@ Section symmetry.
  Proposition by_Symmetry f g: compat i f -> f ° b <= s ° (T g) -> f ° b <= b ° (T g).
  Proof.
    intros Hf Hfg. apply compat_if_fi in Hf.
+   rewrite sym_from at 2.
    rewrite mcap_o. apply cap_spec. split. assumption.
    change (f ° b <= i ° (s ° i ° T g)). apply Switch.
    rewrite compA, Hf.
@@ -343,12 +335,18 @@ Section symmetry.
    rewrite compA, Hfg, <-2(compA s).
    apply comp_leq. reflexivity.
    assert (iT: i <= T g). rewrite invol_t at 1. apply t_T.
-   rewrite iT at 3. rewrite TT_T.
+   rewrite iT at 1. rewrite TT_T.
    apply Switch. apply fT_T, iT. 
  Qed.
 
 End symmetry.
-Arguments Involution {X L} i.
+Arguments Involution {_ _} _.
+Arguments Sym_from {_ _} _ _ _.
+
+(** obvious instance of [Sym_from] (default) *)
+Instance sym_from_def {X} {L: CompleteLattice X} {i s: mon X}: Sym_from i (cap s (i ° s ° i)) s.
+Proof. now cbn. Qed.
+
 
 (** * Proof system *)
 
@@ -501,6 +499,7 @@ End s.
 End paco.
 
 
+(** * alternative definition of the companion, using Kleene iteration *)
 Module chain.
 Section s.
  Context {X} {L: CompleteLattice X}. 
@@ -577,6 +576,8 @@ Section s.
    rewrite <-sbt. now apply leq_infx_id.
  Qed.
 
+ (** * additivity of the companion (assuming classical logic) *)
+ 
  Import Classical. 
  Lemma choose (P A B: X -> Prop): (forall x, P x -> A x \/ B x) -> (exists x, P x /\ B x) \/ (forall x, P x -> A x).
  Proof.
