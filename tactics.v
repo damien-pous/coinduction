@@ -1,4 +1,18 @@
-(** * Tactics for coinductive binary relations  *)
+(** * Tactics for coinductive binary relations *)
+
+(**
+we provide three tactics:
+- [coinduction R H] to start a proof by coinduction 
+  [R] is a name for the bisimulation candidate,
+  [H] is an introduction pattern for the properties of the candidate
+- [accumulate H] to accumulate new pairs in the bisimulation candidate
+  [H] is an introduction pattern, as above
+- [symmetric] to reason by symmetry when the coinductive relation is defined by a symmetric function.
+  this tactics makes it possible to play only half of the coinductive game, provided it manages to prove automatically that the candidate is symmetric.
+  A tactic [tac] for solving the symmetry requirement may be passed as follows
+  [symmetric using tac] may be used to 
+  (by default, we use solve[clear;firstorder])
+*)
 
 
 Require Import coinduction rel.

@@ -1,4 +1,8 @@
-(** * Example: Milner's CCS *)
+(** * Example: Milner's CCS 
+    
+    references point to the following paper 
+    Coinduction All the Way Up. Damien Pous. In Proc. LICS, 2016.
+*)
 
 Require Import coinduction rel tactics.
 From AAC_tactics Require Import AAC.
@@ -94,11 +98,19 @@ Module CCS(Export M: N).
  Notation B := (B b).
  Notation T := (t B).
  Notation t := (t b).
+ Notation "x ≡[ R ] y" := (t R x y) (at level 80). 
+ Notation "x ≡ y" := (t _ x y) (at level 80). 
+ Notation "x [≡] y" := (b (body t _) x y) (at level 80).
  
  (** Some valid laws  *)
  Lemma parC: forall p q, p \| q ~ q \| p.
  Proof.
-   coinduction R H. symmetric.
+   (** the tactic [coinduction R H] makes it possible to start a proof by enhanced coinduction.
+       the goal is transformed into a bisimulation candidate [R], and we get to analyse the transitions, information about pairs in [R] is stored in [H]. *)
+   coinduction R H.
+   (** the tactic [symmetric] makes it possible to play the bisimulation only from left-to-right here, since the candidate is symmetric*)
+   symmetric.
+   (** we finally analyse the transitions *)
    intros p q l p' pp'. inverse_trans; eauto with ccs.
  Qed.
 
@@ -113,6 +125,9 @@ Module CCS(Export M: N).
    coinduction R H.
    intros p; split; intros l p' pp'; simpl; inverse_trans; eauto with ccs.
  Qed.
+
+ (** we prove more laws below, but first we need to establish the validity of up-to congruence, i.e., with the companion, that for all R, [t R] is a congruence w.r.t. CCS operators.
+  *)
  
  (** * Equivalence closure *)
  
@@ -285,7 +300,7 @@ Module CCS(Export M: N).
  Lemma plsC: forall p q, p+q ~ q+p.
  Proof.
    (* coinduction not necessary, just used here to exploit symmetry argument *)
-   coinduction R H. symmetric.
+   coinduction R _. symmetric.
    intros p q l p' pp'. inverse_trans; eauto with ccs.
  Qed.
 
@@ -575,4 +590,12 @@ Goal A ~ B /\ C ~ D.
   coinduction R [AB CD]. split.
   apply bAB. now rewrite CD.     (* apply prft_t. now symmetry.  *)
   apply bCD. now rewrite AB, CD. (* now apply part_t.  *)
+Qed.
+
+(** refining the candidate on-the-fly, using the [accumulate] tactic *)
+Goal A ~ B.
+  coinduction R AB.
+  apply bAB. apply prft_t.
+  symmetry. accumulate CD. 
+  apply bCD. now rewrite AB, CD. 
 Qed.
