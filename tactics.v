@@ -33,7 +33,7 @@ Set Implicit Arguments.
 *)
 Module reification.
 
- (** depedently typed syntax for formulas of the shape
+ (** dependently typed syntax for formulas of the shape
      forall x y, R t1 t2 /\ forall z, R s1 s2 *)
  Inductive T :=
  | hol
