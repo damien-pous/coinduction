@@ -4,6 +4,7 @@
 lattice.v
 coinduction.v
 rel.v
+tactics.v
 tests.v
 divergence.v
 streams.v

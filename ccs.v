@@ -1,6 +1,6 @@
 (** * Example: Milner's CCS *)
 
-Require Import coinduction rel.
+Require Import coinduction rel tactics.
 From AAC_tactics Require Import AAC.
 Set Implicit Arguments.
 

@@ -49,7 +49,7 @@ end
 
 (* Coinduction.rel.reification Coq module *)
 module Coinduction = struct
-  let path  = lib_path@["rel";"reification"]
+  let path  = lib_path@["tactics";"reification"]
   let t     = get_const path "T"
   let hol   = get_const path "hol"
   let abs   = get_fun_2 path "abs"

@@ -1,14 +1,14 @@
 
-(** * tests for the reification tools  *)
+(** * tests for the exported tactics *)
 
-Require Import coinduction rel.
+Require Import coinduction rel tactics.
 
 Section s.
   Variables b c s: mon (nat -> nat -> Prop).
   Infix "~" := (gfp b) (at level 80).
-  (* TOTHINK notation could actually hide R, which is not so relevant *)
-  Notation "x ~ [ R ] y" := (t b R x y) (at level 80). 
-  Notation "x .~ [ R ] y" := (b (body (t b) R) x y) (at level 80).
+  Notation "x ≡[ R ] y" := (t b R x y) (at level 80). 
+  Notation "x ≡ y" := (t b _ x y) (at level 80). 
+  Notation "x [≡] y" := (b (body (t b) _) x y) (at level 80).
   Goal 5 ~ 6.
     coinduction R H.
     Restart.
@@ -52,11 +52,11 @@ Section s.
   
   Goal 5 ~ 6.
     coinduction R H.
-    cut (4 ~[R] 5). admit.
+    cut (4 ≡[R] 5). admit.
     accumulate H'. 
-    cut (3 ~[R] 2). admit.
+    cut (3 ≡[R] 2). admit.
     accumulate H''. 
-    cut ((forall x, x ~[R] 1) /\ 0 ~[R] 18). admit.
+    cut ((forall x, x ≡[R] 1) /\ 0 ≡[R] 18). admit.
     accumulate [H''' H'''']. 
   Abort.
   

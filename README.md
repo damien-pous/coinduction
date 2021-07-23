@@ -20,6 +20,7 @@ As well as examples for using the library:
  + `lattice.v`     : complete lattices, monotone functions in such lattices
  + `coinduction.v` : abstract theory of coinduction in complete lattices, companion
  + `rel.v`         : tools for the complete lattice of binary relations
+ + `tactics.v`     : tactics for coinductve relations
  + `divergence.v`  : Hur et al's example on divergence 
  + `streams.v`     : Rutten's stream calculus 
  + `ccs.v`         : Milner's CCS 
@@ -32,7 +33,7 @@ As well as examples for using the library:
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
 - License: [GNU LGPL](LICENSE)
 - Compatible Coq versions: 8.13 or later
-- Additional dependencies:
+- Additional dependencies: coq-aac-tactics (for the CCS example only)
 - Coq namespace: `Coinduction`
 - Related publication(s):
   - [Coinduction All the Way Up](https://hal.archives-ouvertes.fr/hal-01259622) doi:[10.1145/2933575.2934564](http://dx.doi.org/10.1145/2933575.2934564)

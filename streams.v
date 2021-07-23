@@ -1,7 +1,7 @@
 (** * Example: Rutten's stream calculus *)
 
 Require Import Psatz.
-Require Import coinduction rel.
+Require Import coinduction rel tactics.
 Set Implicit Arguments.
 
 
