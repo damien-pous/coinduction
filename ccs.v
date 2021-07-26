@@ -81,7 +81,7 @@ Module CCS(Export M: N).
    match goal with
    | H: trans ?p _ _ |- _ =>
      tryif is_var p then fail else
-       inversion H; subst; clear H; try congruence; inverse_trans
+       inversion H; subst; clear H; (* try congruence; *) inverse_trans
    | _ => idtac
    end.
 
@@ -354,7 +354,7 @@ Module CCS(Export M: N).
  Lemma new_prf': forall a l p, ~ fresh a l -> new a (prf l p) ~ 0.
  Proof.
    intros. step. 
-   split; intros l' p' pp'; simpl; inverse_trans; eauto with ccs.
+   split; intros l' p' pp'; simpl; inverse_trans; eauto with ccs; tauto.
  Qed.
  
  Lemma new_sum: forall a p q, new a (p + q) ~ new a p + new a q.
@@ -366,7 +366,7 @@ Module CCS(Export M: N).
  Lemma prf_tau_new c p q: prf tau (new c (p \| q)) ~ new c (prf (out c) p \| prf (inp c) q).
  Proof.
    step.
-   split; intros l p' pp'; simpl; inverse_trans; eauto with ccs.
+   split; intros l p' pp'; simpl; inverse_trans; eauto with ccs; congruence.
  Qed.
 
  Lemma prf_prf_tau_new_o l c p q:
@@ -374,7 +374,7 @@ Module CCS(Export M: N).
    prf l (prf tau (new c (p \| q))) ~ new c (prf l (prf (out c) p) \| prf (inp c) q).
  Proof.
    intro H. step.
-   split; intros l' p' pp'; simpl; inverse_trans;
+   split; intros l' p' pp'; simpl; inverse_trans; try congruence;
      eexists; eauto with ccs; apply prf_tau_new.
  Qed.
 
@@ -383,7 +383,7 @@ Module CCS(Export M: N).
    prf l (prf tau (new c (p \| q))) ~ new c (prf (out c) p \| prf l (prf (inp c) q)).
  Proof.
    intro H. step.
-   split; intros l' p' pp'; simpl; inverse_trans;
+   split; intros l' p' pp'; simpl; inverse_trans; try congruence;
      eexists; eauto with ccs; apply prf_tau_new.
  Qed.
 
@@ -455,18 +455,26 @@ Module CCS(Export M: N).
    match goal with
    | H: trans ?p _ _ |- _ =>
      lazymatch p with
-     | rep _ => apply rep_trans2 in H as [(?&?&?)|(?&?&?&?&?&?&?)];
-                (try congruence); (try subst); inverse_trans'
+     | rep _ =>
+       apply rep_trans2 in H as [(?&?&?)|(?&?&?&?&?&?&?)];
+       [|subst || (exfalso; congruence)]; inverse_trans'
      | _ => tryif is_var p then fail else inversion H; subst; clear H; inverse_trans'
      end
    | _ => idtac
    end.
+
+ (** setoid_rewriting is extremely slow in trying to use the fact that [~] is always a subrelation of R]
+     in order to improve compilation time, we use the following notation and duplicate of [unfold_rep]
+     TODO: fix this in a more satisfactory way. *)
+ Notation "` H" := (rel_gfp_t _ H) (at level 2).
+ Lemma unfold_rep' R p: t R (!p) (!p \| p).
+ Proof. apply rel_gfp_t, unfold_rep. Qed.
  
  Lemma rep_pls p q: !(p+q) ~ !p \| !q.
  Proof.
    coinduction R H.
    split; intros a p' T; simpl; inverse_trans';
-     (eexists; [eauto with ccs|rewrite ?H1, ?H3, H; aac_reflexivity]).
+     (eexists; [eauto with ccs|rewrite ?`H1, ?`H3, H; aac_reflexivity]).
  Qed.
 
  Lemma rep_invol p: !(!p) ~ !p.
@@ -474,11 +482,11 @@ Module CCS(Export M: N).
    coinduction R H.
    split; intros l p' T; simpl.
    - inverse_trans'.
-     eexists. eauto with ccs. rewrite H1, H2. aac_rewrite<-unfold_rep. rewrite H. aac_reflexivity.
-     eexists. eauto with ccs. rewrite H1, H4. aac_rewrite<-unfold_rep. rewrite H. aac_reflexivity. 
-     eexists. eauto with ccs. rewrite H3, H2, H4. do 2 aac_rewrite<-unfold_rep. rewrite H. aac_reflexivity.     
+     eexists. eauto with ccs. rewrite `H1, `H2. aac_rewrite<-(unfold_rep' R). rewrite H. aac_reflexivity.
+     eexists. eauto with ccs. rewrite `H1, `H4. aac_rewrite<-(unfold_rep' R). rewrite H. aac_reflexivity. 
+     eexists. eauto with ccs. rewrite `H3, `H2, `H4. do 2 aac_rewrite<-(unfold_rep' R). rewrite H. aac_reflexivity.     
    - destruct (rep_trans T) as [? _ E].
-     eexists. eauto with ccs. rewrite E. aac_rewrite<-unfold_rep. rewrite H. aac_reflexivity. 
+     eexists. eauto with ccs. rewrite `E. aac_rewrite<-(unfold_rep' R). rewrite H. aac_reflexivity. 
  Qed.
 
  Lemma rep_idem p: !p ~ !p \| !p.
@@ -488,7 +496,7 @@ Module CCS(Export M: N).
  Proof.
    coinduction R H.
    split; intros a p' T; simpl; inverse_trans';
-     (eexists; [eauto with ccs|rewrite ?H1, ?H3, H; repeat aac_rewrite <-unfold_rep; aac_reflexivity]).
+     (eexists; [eauto with ccs|rewrite ?`H1, ?`H3, H; repeat aac_rewrite <-(unfold_rep' R); aac_reflexivity]).
  Qed.
 
  Lemma rep_prf_trans a p b p': trans (!prf a p) b p' -> a=b /\ p' ~ p \| !prf a p.
@@ -511,13 +519,13 @@ Module CCS(Export M: N).
    intros. coinduction R H.
    split; intros b p' T; simpl; inverse_trans'.
    - eexists. apply t_par_l; eauto with ccs.
-     rewrite H1. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
+     rewrite `H1. aac_rewrite H. aac_rewrite <-(unfold_rep' R). aac_reflexivity.
    - eexists. apply t_par_r; eauto with ccs.
-     rewrite H1. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
+     rewrite `H1. aac_rewrite H. aac_rewrite <-(unfold_rep' R). aac_reflexivity.
    - eexists. apply t_par_l; eauto with ccs.
-     rewrite H1. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
+     rewrite `H1. aac_rewrite H. aac_rewrite <-(unfold_rep' R). aac_reflexivity.
    - eexists. apply t_par_r; eauto with ccs.
-     rewrite H1. aac_rewrite H. aac_rewrite <-unfold_rep. aac_reflexivity.
+     rewrite `H1. aac_rewrite H. aac_rewrite <-(unfold_rep' R). aac_reflexivity.
  Qed.
 
  Infix ">>" := (prf) (at level 30, right associativity): ccs_scope. 
@@ -539,7 +547,9 @@ Module CCS(Export M: N).
    assert (BP': freshp b (0 \| p)) by now repeat constructor. 
    coinduction R H.
    split; intros l p' pp'; simpl; inverse_trans'; try congruence; 
-     eexists; eauto with ccs; rewrite H1; clear H1; aac_rewrite H; apply part_t; trivial.
+     eexists; eauto with ccs; rewrite `H1; clear H1; aac_rewrite H; apply part_t; trivial;
+       (* last step just to improve setoid_rewriting performances *)
+       apply rel_gfp_t.
    - rewrite <-prf_prf_tau_new_i by assumption.
      rewrite new_gc by assumption.
      aac_reflexivity.
