@@ -9,8 +9,8 @@ we provide three tactics:
   [H] is an introduction pattern, as above
 - [symmetric] to reason by symmetry when the coinductive relation is defined by a symmetric function.
   this tactics makes it possible to play only half of the coinductive game, provided it manages to prove automatically that the candidate is symmetric.
-  A tactic [tac] for solving the symmetry requirement may be passed as follows
-  [symmetric using tac] may be used to 
+  A tactic [tac] for solving the symmetry requirement may be passed as follows:
+  [symmetric using tac]
   (by default, we use solve[clear;firstorder])
 *)
 
@@ -68,7 +68,7 @@ Module reification.
  Qed.
 
  (** the enhanced coinduction lemma expressed in this reified form *)
- Lemma coinduction_ L A x y (b: mon (A -> A -> Prop)):
+ Lemma coinduction L A x y (b: mon (A -> A -> Prop)):
      (forall R, pT L (t b R) x y -> pT L (b (t b R)) x y) ->
      pT L (gfp b) x y.
  Proof.
@@ -128,7 +128,7 @@ Module reification.
    - simpl tsnoc. simpl merge.
      rewrite IHLs. simpl merge. now rewrite cupA, (cupC (rT _ _ _)), <-cupA.
  Qed.
- Lemma accumulate_ A Ls L x y (b: mon (A -> A -> Prop)):
+ Lemma accumulate A Ls L x y (b: mon (A -> A -> Prop)):
      (forall R, pTs (tsnoc Ls L x y) (t b R) (pT L (b (t b R)) x y)) ->
      (forall R, pTs Ls (t b R) (pT L (t b R) x y)).
  Proof.
@@ -141,7 +141,7 @@ Module reification.
  Qed.
 
  (** for reasoning by symmetry *)
- Lemma by_symmetry_ {L A} {b s: mon (A -> A -> Prop)} {S: Sym_from converse b s} R x y:
+ Lemma by_symmetry L A x y {b s: mon (A -> A -> Prop)} {S: Sym_from converse b s} R:
      (forall i j, rT L x y j i -> rT L x y i j) ->
      pT L (s (t b R)) x y ->
      pT L (b (t b R)) x y.
@@ -154,13 +154,11 @@ End reification.
 (** resulting [coinduction] tactic, to start a proof by coinduction *)
 Declare ML Module "reification". 
 Tactic Notation "coinduction" simple_intropattern(R) simple_intropattern(H) :=
-  coinduction_reify; apply reification.coinduction_;
-  simpl reification.pT; intros R H.
+  apply_coinduction; intros R H.
 
 (** tactic for reasoning on symmetric candidates with symmetric functions *)
 Tactic Notation "symmetric" "using" tactic(tac) :=
-  symmetric_reify; apply reification.by_symmetry_;
-  [simpl reification.rT; tac | simpl reification.pT].
+  apply_by_symmetry; [simpl reification.rT; tac|].
 
 Tactic Notation "symmetric" :=
   symmetric using (solve[clear;firstorder]||fail "could not get symmetry automatically").
@@ -175,24 +173,23 @@ Ltac solve_sym := solve [
 *)
 
 (** accumulation tactic (once a proof by coinduction has been started) *)
-Ltac xaccumulate R tbR :=
+Ltac xaccumulate n R tbR :=
   lazymatch goal with
-  | H: context[tbR _ _] |- _ => revert H; xaccumulate R tbR; intro H
-  | _ => accumulate_reify; revert R; apply reification.accumulate_; intro R;
-         simpl reification.pTs; simpl reification.pT
+  | H: context[tbR _ _] |- _ => revert H; xaccumulate (S n) R tbR; intro H
+  | _ => apply_accumulate n R
   end.
 
 Tactic Notation "accumulate" simple_intropattern(H) :=
-  symmetric_reify;
+  find_candidate;
   match goal with
-    |- reification.pT _ ?tbR _ _ =>
+    |- ?tbR = _ -> _ =>
     match tbR with
-    | body (t _) ?R => xaccumulate R tbR; intros H
+    | body (t _) ?R => intros _; xaccumulate O R tbR; intros H
     end
   end.
 
 
-(** performing a single step (equivalent to [accumulate _]) *)
+(** performing a single step (equivalent to [accumulate _], except that we do not deal with composite candidates) *)
 Ltac step :=
   match goal with
   | |- gfp ?b ?x ?y => apply (proj2 (gfp_fp b x y))

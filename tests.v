@@ -28,6 +28,18 @@ Section s.
     Fail coinduction_reify.
   Abort.
 
+  
+  Goal 5 ~ 6.
+    coinduction R H.
+    cut (4 ≡[R] 5). admit.
+    accumulate H'. 
+    cut (3 ≡[R] 2). admit.
+    accumulate H''. 
+    cut ((forall x, x ≡[R] 1) /\ 0 ≡[R] 18). admit.
+    accumulate [H''' H'''']. 
+  Abort.
+
+  
   Notation b' := (cap s (converse ° s ° converse)).
   Goal forall n m, gfp b' n m.
   Proof.
@@ -43,21 +55,17 @@ Section s.
   Proof.
     Fail symmetric. 
     coinduction R H.
-    Fail symmetric. 
+    Fail symmetric.             (* TOFIX: message *)
   Abort.  
   Goal forall n m, (forall a, gfp b' (n+a) (a+m)) /\ (forall b, gfp b' (b+m) (n+b)).
     coinduction R H.
     symmetric. 
   Abort.
-  
-  Goal 5 ~ 6.
-    coinduction R H.
-    cut (4 ≡[R] 5). admit.
-    accumulate H'. 
-    cut (3 ≡[R] 2). admit.
-    accumulate H''. 
-    cut ((forall x, x ≡[R] 1) /\ 0 ≡[R] 18). admit.
-    accumulate [H''' H'''']. 
+
+  Goal True.
+    assert (R: nat -> nat -> Prop). admit.
+    cut (forall x: nat, t b R x x). admit.
+    find_candidate.
   Abort.
   
 End s.

@@ -2,7 +2,7 @@ extract ccs and streams as separate packages?
 
 add renaming in CCS ? (explicit on processes / as a LTS construction)
 
-preserve names of bound variables
+document ocaml code
 
 arbitrary arity / dependent predicates
 

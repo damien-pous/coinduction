@@ -4,6 +4,7 @@ DECLARE PLUGIN "reification"
 
 
 open Ltac_plugin
+open Stdarg
 open EConstr
 
 (* pick an element in an hashtbl *)
@@ -43,6 +44,7 @@ let get_fun_14 d s = let v = get_const d s in fun x y z t u r w p q q1 q2 q3 q4 
 
 (* Coq constants *)
 module Coq = struct
+  let eq_refl = get_fun_2 ["Coq"; "Init"; "Logic"] "eq_refl"
   let and_ = get_const ["Coq"; "Init"; "Logic"] "and"
   let pair = get_fun_4 ["Coq"; "Init"; "Datatypes"] "pair"
 end
@@ -50,7 +52,6 @@ end
 (* Coinduction.rel.reification Coq module *)
 module Coinduction = struct
   let path  = lib_path@["tactics";"reification"]
-  let t     = get_const path "T"
   let hol   = get_const path "hol"
   let abs   = get_fun_2 path "abs"
   let cnj   = get_fun_2 path "cnj"
@@ -60,21 +61,45 @@ module Coinduction = struct
   let pts   = get_fun_4 path "pTs"
   let tnil  = get_fun_1 path "tnil"
   let tcons = get_fun_5 path "tcons"
+  let coinduction = get_fun_5 path "coinduction"
+  let accumulate  = get_fun_6 path "accumulate"
+  let by_symmetry = get_fun_5 path "by_symmetry"
             
-  let path  = lib_path@["lattice"]
-  let body  = get_const path "body"
+  let path     = lib_path@["lattice"]
+  let body     = get_const path "body"
             
-  let path  = lib_path@["coinduction"]
-  let gfp   = get_const path "gfp"
+  let path     = lib_path@["coinduction"]
+  let t        = get_const path "t"
+  let gfp      = get_const path "gfp"
+  let sym_from = get_const path "Sym_from"
 end 
 
 open Constr
 open EConstr
 open Proofview
 
-let reify mode goal =
+
+(* finding the bisimulation candidate of an ongoing coinductive proof
+   it must be of the shape [t ?b ?R], where [t] is the companion
+   using [Tactics.generalize] is an ugly hack in order to give the value [t b R] back to Ltac
+ *)
+let find_candidate goal =
   let goal = Goal.print goal in
-  let env = Tacmach.pf_env goal in
+  let sigma = Tacmach.project goal in
+  let rec parse e =
+    match kind sigma e with
+    | Prod(_,_,q) -> parse q
+    | App(c,[|p;_|]) when c=Lazy.force Coq.and_ -> parse p
+    | App(c,[|t;l;b;r;_;_|]) when c=Lazy.force Coinduction.body -> mkApp(c,[|t;l;b;r|])
+    | _ -> error "did not recognise an ongoing proof by enhanced coinduction"
+  in
+  let tbr = parse (Tacmach.pf_concl goal) in
+  let _,ttbr = Tacmach.pf_type_of goal tbr in
+  Tactics.generalize [Coq.eq_refl ttbr tbr]
+   
+let apply mode goal =
+  let goal = Goal.print goal in
+  (* let env = Tacmach.pf_env goal in *)
   let sigma = Tacmach.project goal in
   let get_type t = 
     match kind sigma t with
@@ -83,67 +108,118 @@ let reify mode goal =
   in
   let rec parse e =
     match kind sigma e with
-    | Prod(i,b,q) ->
-       let (c,a,r,x,y) = parse q
-       in (Coinduction.abs b (mkLambda(i,b,c)),
-           a,r,
-           mkLambda(i,b,x),
-           mkLambda(i,b,y))
+    | Prod(i,w,q) ->
+       let (c,a,slb,r,x,y,q) = parse q
+       in (Coinduction.abs w (mkLambda(i,w,c)),
+           a,slb,r,
+           mkLambda(i,w,x),
+           mkLambda(i,w,y),
+           (fun l r -> mkProd(i,w,q (l+1) r)))
     | App(c,[|p1;p2|])
          when c=Lazy.force Coq.and_ ->
-       let (c1,a1,r1,x1,y1) = parse p1 in
-       let (c2,a2,r2,x2,y2) = parse p2 in
-       if a1<>a2 || r1<>r2 then error "only one coinductive relation is allowed";
+       let (c1,a,slb,r,x1,y1,p1) = parse p1 in
+       let (c2,_,_,r',x2,y2,p2) = parse p2 in
+       if r<>r' then error "only one coinductive relation is allowed";
        (Coinduction.cnj c1 c2,
-        a1,r1,
-        Coq.pair (Coinduction.ft c1 a1) (Coinduction.ft c2 a2) x1 x2,
-        Coq.pair (Coinduction.ft c1 a1) (Coinduction.ft c2 a2) y1 y2)
-    | App(c,[|t;l;b;x;y|])
+        a,slb,r,
+        Coq.pair (Coinduction.ft c1 a) (Coinduction.ft c2 a) x1 x2,
+        Coq.pair (Coinduction.ft c1 a) (Coinduction.ft c2 a) y1 y2,
+       (fun l r -> mkApp(c,[|p1 l r;p2 l r|])))
+    | App(c,[|s;l;b;x;y|])      (* gfp s l b x y *)
          when mode=`Coinduction &&
                 c=Lazy.force Coinduction.gfp ->
        (Lazy.force Coinduction.hol,
-        get_type t,
-        mkApp(c,[|t;l;b|]),
+        get_type s,
+        (s,l,b),
+        mkApp(c,[|s;l;b|]),
         x,
-        y)
-    | App(c,[|t;l;b;r;x;y|])
-         when mode<>`Coinduction &&
+        y,
+       (fun l r -> mkApp(r l,[|x;y|])))
+    | App(c,[|s;l;tb;r;x;y|])    (* body s l (t _ _ b) r x y *)
+         when mode<>`Coinduction && mode <>`By_symmetry &&
                 c=Lazy.force Coinduction.body ->
-       (Lazy.force Coinduction.hol,
-        get_type t,
-        mkApp(c,[|t;l;b;r|]),
-        x,
-        y)
+       (match kind sigma tb with
+       | App(_,[|_;_;b|]) ->
+          (Lazy.force Coinduction.hol,
+           get_type s,
+           (s,l,b),
+           mkApp(c,[|s;l;tb;r|]),
+           x,
+           y,
+           (fun l r -> mkApp(r l,[|x;y|])))
+       | _ -> error "unrecognised construct")
+    | App(c,[|s;l;b;tbr;x;y|])    (* body s l b tbr x y *)
+         when mode =`By_symmetry &&
+                c=Lazy.force Coinduction.body ->
+          (Lazy.force Coinduction.hol,
+           get_type s,
+           (s,l,b),
+           mkApp(c,[|s;l;b;tbr|]),
+           x,
+           y,
+           (fun l r -> mkApp(r l,[|x;y|])))
     | _ -> error "unrecognised construct"
   in
-  let rec parse_acc e =
-    match kind sigma e with
-    | Prod(_,l,q) ->
-       let (l,a1,r1,x,y) = parse l in
-       let (q,a2,r2,p) = parse_acc q in
-       if a1<>a2 || r1<>r2 then error "only one coinductive relation is allowed";
-       (Coinduction.tcons a1 l x y q, a1, r1, p)
-    | App(f,[|_;a;r;_;_|])
-         when f=Lazy.force Coinduction.pt_ ->
-       (Coinduction.tnil a, a, r, e)
-    | _ -> error "unrecognised construct"
+  let rec parse_acc n e =
+    match kind sigma n with
+    | App(_,[|n|]) ->
+       begin                    (* S n *)
+         match kind sigma e with
+         | Prod(i,l,q) ->
+            let (l,a,_,r,x,y,l') = parse l in
+            let (cs,c,u,v,_,b,r',g) = parse_acc n q in
+            if r<>r' then error "only one coinductive relation is allowed";
+            (Coinduction.tcons a l x y cs, c, u, v, a, b, r, mkProd(i,l' 0 (fun _ -> r),g))
+         | _ -> error "unrecognised construct"
+       end
+    | _ ->                      (* 0 *)
+       let (c,a,(s,l,b),r,x,y,e) = parse e in
+       (Coinduction.tnil a, c, x, y, a, b, r,
+        (* Coinduction.pt c a r x y, *)
+        mkArrowR
+          (e 0 (fun _ -> r))
+          (e 0 (fun _ -> mkApp(Lazy.force Coinduction.body,[|s;l;b;r|]))))
   in
-  if mode <> `Accumulate then
-    let (c,a,r,x,y) = parse (Tacmach.pf_concl goal) in
-    let p = Coinduction.pt c a r x y in
-    (try tclTHEN (Unsafe.tclEVARS sigma) (Tactics.convert_concl ~check:true p DEFAULTcast)
-     with e -> Feedback.msg_warning (Printer.pr_leconstr_env env sigma p); raise e)
-  else
-    let (c,a,r,p) = parse_acc (Tacmach.pf_concl goal) in
-    let p = Coinduction.pts a c r p in
-    (try tclTHEN (Unsafe.tclEVARS sigma) (Tactics.convert_concl ~check:true p DEFAULTcast)
-     with e -> Feedback.msg_warning (Printer.pr_leconstr_env env sigma p); raise e)
-    
-    
+  match mode with
+  | `Accumulate (i,rname) ->
+     let (cs,c,x,y,a,b,r,p') = parse_acc i (Tacmach.pf_concl goal) in
+     tclTHEN (Tactics.revert [rname])
+       (tclTHEN (Tactics.apply (Coinduction.accumulate a cs c x y b))
+          (tclTHEN (Tactics.introduction rname)
+             (Tactics.convert_concl ~check:true p' DEFAULTcast)
+       ))
+     
+  | `Coinduction ->
+     let (c,a,(s,l,b),r,x,y,g) = parse (Tacmach.pf_concl goal) in
+     let tr i j = mkApp(Lazy.force Coinduction.body,[|s;l;
+                mkApp(Lazy.force Coinduction.t,[|s;l;b|]); mkRel (i+j)|]) in
+     let btr j = mkApp(Lazy.force Coinduction.body,[|s;l;b;tr 2 j|]) in
+     let p' = mkProd (Context.nameR (Names.Id.of_string "R"), s, (mkArrowR (g 0 (tr 1)) (g 0 btr)))  in
+     tclTHEN (Tactics.apply (Coinduction.coinduction c a x y b))
+       (Tactics.convert_concl ~check:true p' DEFAULTcast)
+     
+  | `By_symmetry ->
+     let (c,a,(_,_,b),r,x,y,g) = parse (Tacmach.pf_concl goal) in
+     let p = Coinduction.pt c a r x y in
+     (* Feedback.msg_warning (Printer.pr_leconstr_env env sigma (Coinduction.by_symmetry c a x y b)); *)
+     tclTHEN (Tactics.convert_concl~check:true p DEFAULTcast)
+       (tclTHEN (Tactics.eapply (Coinduction.by_symmetry c a x y b))
+       (Goal.enter (fun goal ->
+            let goal = Goal.print goal in
+            let sigma = Tacmach.project goal in
+            match kind sigma (Tacmach.pf_concl goal) with
+            | App(c,_) when c=Lazy.force Coinduction.sym_from ->
+               Class_tactics.typeclasses_eauto [Class_tactics.typeclasses_db] ~depth:(Some 5)
+            | App(_,[|_;_;s;_;_|]) ->
+               let p' = (g 0 (fun _ -> s))  in
+               Tactics.convert_concl ~check:true p' DEFAULTcast
+            | _ -> tclUNIT ())))
+     
 }
 
 TACTIC EXTEND coinduction_reify
-| [ "coinduction_reify" ] -> { Goal.enter (reify `Coinduction) }
-| [ "symmetric_reify" ] -> { Goal.enter (reify `Symmetric) }
-| [ "accumulate_reify" ] -> { Goal.enter (reify `Accumulate) }
+| [ "apply_coinduction" ] -> { Goal.enter (apply `Coinduction) }
+| [ "apply_by_symmetry" ] -> { Goal.enter (apply `By_symmetry) }
+| [ "apply_accumulate" constr(i) ident(r) ] -> { Goal.enter (apply (`Accumulate(i,r))) }
+| [ "find_candidate" ] -> { Goal.enter find_candidate }
 END
