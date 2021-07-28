@@ -1,4 +1,4 @@
-make stream.v compile faster
+make stream.v compile faster / understand slowness of setoid_rewrite with subrelations
 
 extract ccs and streams as separate packages? (they are slow to compile)
 

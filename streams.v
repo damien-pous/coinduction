@@ -4,7 +4,6 @@ Require Import Psatz.
 Require Import coinduction rel tactics.
 Set Implicit Arguments.
 
-
 Module streams.
   
  (** we consider streams of natural numbers, for the sake of simplicity *)
@@ -32,7 +31,7 @@ Module streams.
  
  (* setoid_rewriting is extremely slow in trying to use the fact that [~] is a subrelation of [t R] or [T f R]
     in order to improve compilation time, we specialize the corresponding instances
-    TODO: this is still not really efficient, fix this in a more satisfactory way. *)
+    TODO: this is still not really efficient, fix this in a more satisfactory way (see more below). *)
  Local Remove Hints rel_gfp_t rel_gfp_T: typeclass_instances.
  Instance rel_gfp_t_: forall R, subrelation (gfp b) (t R) := (@rel_gfp_t _ b).
  Instance rel_gfp_T_: forall f R, subrelation (gfp b) (T f R) := (@rel_gfp_T _ b).
@@ -67,7 +66,7 @@ Module streams.
  (** and [gfp b = ~] in particular *)
  Corollary Equivalence_bisim: Equivalence (gfp b).
  Proof Equivalence_t bot.
-
+ 
  Global Instance hd_bisim: Proper (gfp b ==> eq) hd.
  Proof. intros x y H. apply (gfp_pfp b), H. Qed.
 
@@ -123,18 +122,59 @@ Module streams.
  Axiom tl_shuf: forall s t, tl (s @ t) = tl s @ t + s @ tl t.
  Ltac ssimpl := repeat (rewrite ?hd_shuf, ?tl_shuf; simpl hd; simpl tl).
 
+ (* TOFIX:
+    slowness of setoid_rewrite with subrelations...
+    cf. second rewrite in lemma [shuf_0x] below
+
+    it seems this is because [partial_application_tactic] is very long to fail.
+    doing
+    Local Hint Extern 3 (Proper _ _) => proper_subrelation : typeclass_instances.
+    solves it (by trying [proper_subrelation] first)
+    but this makes other rewrites much slower afterwards...
+
+    trying to remove most instances from the library doesn't seem to be helpful
+  *)
+ (*
+   Local Remove Hints
+          CompleteLattice_Prop CompleteLattice_fun
+          gfp_leq gfp_weq
+          Equivalence_weq PartialOrder_weq_leq
+          sup_leq sup_weq
+          cup_leq cup_weq
+          inf_leq inf_weq
+          cap_leq cap_weq
+          Hbody
+          Hbody'
+          CompleteLattice_mon
+          comp_leq comp_weq
+          app_leq app_weq
+          rel_gfp_t rel_gfp_T
+      : typeclass_instances.
+   Print HintDb typeclass_instances.
+   Set Typeclasses Debug Verbosity 2.
+  *)
+ (* declaring the following instances improves some simple steps:
+    for some reason, it is extremely slow when rewriting with subrelations in the present context,
+    and having immediate instances as below prevents it from exploring dead-ends
+  *)
+ (*
+ Instance proper_impl_t R:
+   Proper (gfp b ==> t R ==> Basics.impl) (t R).
+ Proof. intros x y H u v H' E. eapply rel_gfp_t in H. now rewrite <-H, <-H'. Qed.
+ Instance proper_impl'_t R:
+   Proper (gfp b ==> t R ==> Basics.flip Basics.impl) (t R).
+ Proof. intros x y H u v H' E. eapply rel_gfp_t in H. now rewrite H, H'. Qed.
+ Remove Hints rel_gfp_t rel_gfp_T: typeclass_instances.
+  *)
+ (*
+   even wih those instances, other rewrites remain pretty slow, 
+   e.g., the [rewrite 2plusA] in lemma [shuf_x_plus] below
+  *)
+ 
  Lemma shuf_0x: forall x, c 0 @ x ~ c 0.
  Proof.
    coinduction R HR. intros x. split; ssimpl.
     nia.
-    (* TOTHINK (on slowness of setoid_rewriting with subrelations)
-       below: second rewrite below really slow, 
-       because [partial_application_tactic] is very long to fail
-       doing
-       Local Hint Extern 3 (Proper _ _) => proper_subrelation : typeclass_instances.
-       solves it (by trying [proper_subrelation] first)
-       but this makes other rewrites much slower afterwards...
-     *)
     rewrite HR. rewrite plus_0x. apply HR. 
  Qed.
  
