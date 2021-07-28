@@ -21,6 +21,9 @@ Section s.
     Restart.
     coinduction R [H H'].
   Abort.
+  Goal forall n m (k: n=m), n+n ~ m+m.
+    coinduction R H.
+  Abort.
   Goal forall n m (k: n=m), n+n ~ m+m /\ forall k, n+k ~ k+m.
     coinduction R H.
   Abort.

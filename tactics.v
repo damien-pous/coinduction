@@ -190,6 +190,24 @@ End reification.
 
 (** * Exported tactics *)
 
+(** registering constants required in the OCaml plugin  *)
+Register body                    as coinduction.body.
+Register t                       as coinduction.t.
+Register gfp                     as coinduction.gfp.
+Register Sym_from                as coinduction.Sym_from.
+
+Register reification.hol         as coinduction.hol.
+Register reification.abs         as coinduction.abs.
+Register reification.cnj         as coinduction.cnj.
+Register reification.fT          as coinduction.fT.
+Register reification.pT          as coinduction.pT.
+Register reification.tnil        as coinduction.tnil.
+Register reification.tcons       as coinduction.tcons.
+Register reification.coinduction as coinduction.coinduction.
+Register reification.accumulate  as coinduction.accumulate.
+Register reification.by_symmetry as coinduction.by_symmetry.
+
+(** loading the OCaml plugin  *)
 Declare ML Module "reification". 
 
 (** ** starting a proof by (enhanced) coinduction *)

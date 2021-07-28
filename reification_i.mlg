@@ -15,15 +15,12 @@ open EConstr
 (* pick an element in an hashtbl *)
 let hashtbl_pick t = Hashtbl.fold (fun i x -> function None -> Some (i,x) | acc -> acc) t None
 
-(* path to Coinduction modules *)
-let lib_path = ["Coinduction"]
-
 (* raise an error in Coq *)
 let error s = Printf.kprintf (fun s -> CErrors.user_err (Pp.str s)) ("[coinduction] "^^s)
 
 (* access to Coq constants *)
-let get_const dir s = 
-  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Coqlib.find_reference "coinduction.reify" dir s)))
+let get_const s = 
+  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Coqlib.lib_ref s)))
 
 (* make an application using a lazy value *)
 let force_app f = fun x -> mkApp (Lazy.force f,x)
@@ -32,46 +29,41 @@ let force_app f = fun x -> mkApp (Lazy.force f,x)
 let partial_app n c ca = if n=0 then c else mkApp(c,Array.sub ca 0 n)
 
 (* creating OCaml functions from Coq ones *)
-let get_fun_1 d s = let v = get_const d s in fun x -> force_app v [|x|]
-let get_fun_2 d s = let v = get_const d s in fun x y -> force_app v [|x;y|]
-let get_fun_3 d s = let v = get_const d s in fun x y z -> force_app v [|x;y;z|]
-let get_fun_4 d s = let v = get_const d s in fun x y z t -> force_app v [|x;y;z;t|]
-let get_fun_5 d s = let v = get_const d s in fun x y z t u -> force_app v [|x;y;z;t;u|]
-let get_fun_6 d s = let v = get_const d s in fun x y z t u r -> force_app v [|x;y;z;t;u;r|]
-let get_fun_7 d s = let v = get_const d s in fun x y z t u r w -> force_app v [|x;y;z;t;u;r;w|]
-let get_fun_8 d s = let v = get_const d s in fun x y z t u r w p -> force_app v [|x;y;z;t;u;r;w;p|]
-let get_fun_9 d s = let v = get_const d s in fun x y z t u r w p q -> force_app v [|x;y;z;t;u;r;w;p;q|]
+let get_fun_1 s = let v = get_const s in fun x -> force_app v [|x|]
+let get_fun_2 s = let v = get_const s in fun x y -> force_app v [|x;y|]
+let get_fun_3 s = let v = get_const s in fun x y z -> force_app v [|x;y;z|]
+let get_fun_4 s = let v = get_const s in fun x y z t -> force_app v [|x;y;z;t|]
+let get_fun_5 s = let v = get_const s in fun x y z t u -> force_app v [|x;y;z;t;u|]
+let get_fun_6 s = let v = get_const s in fun x y z t u r -> force_app v [|x;y;z;t;u;r|]
+let get_fun_7 s = let v = get_const s in fun x y z t u r w -> force_app v [|x;y;z;t;u;r;w|]
+let get_fun_8 s = let v = get_const s in fun x y z t u r w p -> force_app v [|x;y;z;t;u;r;w;p|]
+let get_fun_9 s = let v = get_const s in fun x y z t u r w p q -> force_app v [|x;y;z;t;u;r;w;p;q|]
 
 (* Coq constants *)
 module Coq = struct
-  let eq_refl = get_fun_2 ["Coq"; "Init"; "Logic"] "eq_refl"
-  let and_ = get_const ["Coq"; "Init"; "Logic"] "and"
-  let pair = get_fun_4 ["Coq"; "Init"; "Datatypes"] "pair"
+  let eq_refl = get_fun_2 "core.eq.refl"
+  let and_    = get_const "core.and.type"
+  let pair    = get_fun_4 "core.prod.intro"
 end
 
 (* Coinduction constants *)
 module Cnd = struct
-  let path  = lib_path@["tactics";"reification"]
-  let hol   = get_const path "hol"
-  let abs   = get_fun_2 path "abs"
-  let cnj   = get_fun_2 path "cnj"
-  let ft    = get_fun_2 path "fT"
-  let pt_   = get_const path "pT"
-  let pt    = get_fun_5 path "pT"
-  let tnil  = get_fun_1 path "tnil"
-  let tcons = get_fun_5 path "tcons"
-  let coinduction = get_fun_5 path "coinduction"
-  let accumulate  = get_fun_6 path "accumulate"
-  let by_symmetry = get_fun_5 path "by_symmetry"
-            
-  let path     = lib_path@["lattice"]
-  let body_    = get_const path "body"
-  let body     = get_fun_4 path "body"
-            
-  let path     = lib_path@["coinduction"]
-  let t        = get_fun_3 path "t"
-  let gfp      = get_const path "gfp"
-  let sym_from = get_const path "Sym_from"
+  let body_       = get_const "coinduction.body"
+  let body        = get_fun_4 "coinduction.body"            
+  let t           = get_fun_3 "coinduction.t"
+  let gfp         = get_const "coinduction.gfp"
+  let sym_from    = get_const "coinduction.Sym_from"
+  let hol         = get_const "coinduction.hol"
+  let abs         = get_fun_2 "coinduction.abs"
+  let cnj         = get_fun_2 "coinduction.cnj"
+  let fT          = get_fun_2 "coinduction.fT"
+  let pT_         = get_const "coinduction.pT"
+  let pT          = get_fun_5 "coinduction.pT"
+  let tnil        = get_fun_1 "coinduction.tnil"
+  let tcons       = get_fun_5 "coinduction.tcons"
+  let coinduction = get_fun_5 "coinduction.coinduction"
+  let accumulate  = get_fun_6 "coinduction.accumulate"
+  let by_symmetry = get_fun_5 "coinduction.by_symmetry"
 end 
 
 open Constr
@@ -178,8 +170,8 @@ let apply mode goal =
        (aslb,
         r,
         Cnd.cnj c1 c2,
-        Coq.pair (Cnd.ft a c1) (Cnd.ft a c2) x1 x2,
-        Coq.pair (Cnd.ft a c1) (Cnd.ft a c2) y1 y2,
+        Coq.pair (Cnd.fT a c1) (Cnd.fT a c2) x1 x2,
+        Coq.pair (Cnd.fT a c1) (Cnd.fT a c2) y1 y2,
        (fun v l r -> mkApp(c,[|g1 v l r;g2 v l r|])))
     | App(c,[|s;l;b;x;y|])      (* gfp s l b x y *)
          when mode=`Coinduction &&
@@ -289,7 +281,7 @@ let apply mode goal =
         - do a change with nice types on the second and third ones 
         I don't know how to get access to those three goals separately (e.g., the tclTHENLAST tacticial has a different type than the tclTHEN I'm using here...), so that I take look at the resulting goals to recognise who is who.
       *)
-     let p = Cnd.pt a r c x y in
+     let p = Cnd.pT a r c x y in
      (* Feedback.msg_warning (Printer.pr_leconstr_env env sigma (Cnd.by_symmetry a c x y b)); *)
      tclTHEN (Tactics.convert_concl~check:true p DEFAULTcast)
        (tclTHEN (Tactics.eapply (Cnd.by_symmetry a c x y b))
@@ -301,7 +293,7 @@ let apply mode goal =
             | App(c,_) when c=Lazy.force Cnd.sym_from ->
                Class_tactics.typeclasses_eauto [Class_tactics.typeclasses_db] ~depth:(Some 5)
             (* third subgoal (main goal) is of the shape [pT a r' c x y] *)
-            | App(c,[|_;r';_;_;_|]) when c=Lazy.force Cnd.pt_ ->
+            | App(c,[|_;r';_;_;_|]) when c=Lazy.force Cnd.pT_ ->
                (* here we need to look at the goal anyways, in order to discover the relation [r'] built from the function found by typeclass resolution, and use it to give a nice type *)
                let p' = (g true 0 (fun _ -> r'))  in
                Tactics.convert_concl ~check:true p' DEFAULTcast

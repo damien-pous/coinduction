@@ -1,4 +1,4 @@
-use Coqlib.lib_ref 
+make stream.v compile faster
 
 extract ccs and streams as separate packages? (they are slow to compile)
 
