@@ -25,10 +25,14 @@ Set Implicit Arguments.
       [forall x y, R (x+y) (y+x+x)]
       becomes 
       [sup_all (fun x => sup_all (fun y => pair (x+y) (y+x+x))) <== R]
+      which in turn becomes
+      [pT (abs (fun x => abs (fun y => hol))) R (fun x y => (x+y)) (fun x y => (y+x+x))]
 
       [forall x y, R (x+y) y /\ R x y]
       becomes 
       [sup_all (fun x => sup_all (fun y => cup (pair (x+y) y) (pair x y)))) <== R]
+      which in turn becomes
+      [pT (abs (fun x => abs (fun y => cnj hol hol))) R (fun x y => (x+y,y)) (fun x y => (x,y))]
 
 *)
 Module reification.
@@ -41,36 +45,41 @@ Module reification.
  | cnj(H K: T).
  Arguments abs _ _: clear implicits. 
 
- Fixpoint fT (L: T) A :=
-   match L with
+ Fixpoint fT A (c: T) :=
+   match c with
    | hol => A
-   | abs B Q => forall b: B, fT (Q b) A
-   | cnj H K => (fT H A * fT K A)%type
+   | abs B Q => forall b: B, fT A (Q b)
+   | cnj H K => (fT A H * fT A K)%type
    end.
- Fixpoint pT (L: T) A (R: A -> A -> Prop): fT L A -> fT L A -> Prop :=
-   match L with
+ Fixpoint pT A (R: A -> A -> Prop) (c: T): fT A c -> fT A c -> Prop :=
+   match c with
    | hol => R
-   | abs B Q => fun x y => forall b, pT (Q b) R (x b) (y b)
-   | cnj H K => fun x y => pT H R (fst x) (fst y) /\ pT K R (snd x) (snd y)
+   | abs B Q => fun x y => forall b, pT R (Q b) (x b) (y b)
+   | cnj H K => fun x y => pT R H (fst x) (fst y) /\ pT R K (snd x) (snd y)
    end.
- Fixpoint rT (L: T) A: fT L A -> fT L A -> A -> A -> Prop :=
-   match L with
+ Fixpoint rT A (c: T): fT A c -> fT A c -> A -> A -> Prop :=
+   match c with
    | hol => @pair A
    | abs B Q => fun x y => sup_all (fun b => rT (Q b) (x b) (y b))
    | cnj H K => fun x y => cup (rT H (fst x) (fst y)) (rT K (snd x) (snd y))
    end.
- Lemma eT (L: T) A R: forall x y: fT L A, pT L R x y <-> rT L x y <= R.
+ (** key lemma about the above functions *)
+ Lemma eT A R (c: T): forall x y: fT A c, pT R c x y <-> rT c x y <= R.
  Proof.
-   induction L; intros x y; simpl pT.
+   induction c; intros x y; simpl pT.
    - apply leq_pair.
    - setoid_rewrite H. symmetry. apply sup_all_spec.
-   - rewrite IHL1, IHL2. symmetry. apply cup_spec.  
+   - rewrite IHc1, IHc2. symmetry. apply cup_spec.  
  Qed.
 
- (** the enhanced coinduction lemma expressed in this reified form *)
- Lemma coinduction L A x y (b: mon (A -> A -> Prop)):
-     (forall R, pT L (t b R) x y -> pT L (b (t b R)) x y) ->
-     pT L (gfp b) x y.
+ (** ** tools for the [coinduction] tactic *)
+ 
+ (** reformulation of the enhanced coinduction lemma using reified terms
+     this is the lemma which is applied in tactic [coinduction]
+  *)
+ Proposition coinduction A (b: mon (A -> A -> Prop)) c x y:
+     (forall R, pT (t b R) c x y -> pT (b (t b R)) c x y) ->
+     pT (gfp b) c x y.
  Proof.
    intro H.
    rewrite eT. apply coinduction.
@@ -83,7 +92,7 @@ Module reification.
  Section s.
   Variable b: mon (nat -> nat -> Prop).
   Goal forall n m (k: n=m), gfp b (n+n) (m+m) /\ forall k, gfp b (n+k) (k+m).
-    apply (coinduction_
+    apply (coinduction
             (abs nat (fun n =>
              abs nat (fun m => 
              abs (n=m) (fun _ => 
@@ -96,41 +105,53 @@ Module reification.
  End s.
   *)
 
- (** accumulation rule *)
+ (** ** tools for the [accumulate] tactic *)
+
+ (** in order to implement the accumulation rule, 
+     we also need to record the existing assumptions about the current candidate 
+     we do so using "lists of [T]s" ([Ts]), which we can later merge into a single relation
+  *)
  Inductive Ts A :=
  | tnil
- | tcons(L: T)(x y: fT L A)(Q: Ts A).
- Fixpoint pTs A (Ls: Ts A) (R: A -> A -> Prop) (P: Prop): Prop :=
-   match Ls with
+ | tcons(c: T)(x y: fT A c)(Q: Ts A).
+ (** semantics of [Ts], as hypotheses  *)
+ Fixpoint pTs A (R: A -> A -> Prop) (cs: Ts A) (P: Prop): Prop :=
+   match cs with
    | tnil _ => P
-   | tcons L x y Ls => pT L R x y -> @pTs _ Ls R P
+   | tcons c x y cs => pT R c x y -> @pTs _ R cs P
    end.
- Fixpoint merge A (Ls: Ts A): A -> A -> Prop :=
-   match Ls with
+ Fixpoint merge A (cs: Ts A): A -> A -> Prop :=
+   match cs with
    | tnil _ => bot
-   | tcons L x y Ls => cup (rT L x y) (merge Ls)
+   | tcons c x y cs => cup (rT c x y) (merge cs)
    end.
- Lemma eTs A Ls R P: @pTs A Ls R P <-> (merge Ls <= R -> P).
+ (** key lemma about the above functions  *)
+ Lemma eTs A R cs P: @pTs A R cs P <-> (merge cs <= R -> P).
  Proof.
-   induction Ls.
+   induction cs.
    - split. trivial. intro H; apply H. apply leq_bx.
-   - simpl pTs. simpl merge. rewrite cup_spec, IHLs, eT. tauto.
+   - simpl pTs. simpl merge. rewrite cup_spec, IHcs, eT. tauto.
  Qed.
- Fixpoint tsnoc {A} Ls L x y :=
-   match Ls with
-   | tnil _ => tcons L x y (tnil A)
-   | tcons L' x' y' Ls => tcons L' x' y' (tsnoc Ls L x y)
+ (** in order to add the current goal as an hypothesis *at the end of the goal*, 
+     we need an operation to insert it *at the end of a list* *)
+ Fixpoint tsnoc {A} cs c x y :=
+   match cs with
+   | tnil _ => tcons c x y (tnil A)
+   | tcons c' x' y' cs => tcons c' x' y' (tsnoc cs c x y)
    end.
- Lemma merge_tsnoc A Ls L x y: merge (@tsnoc A Ls L x y) == merge (tcons L x y Ls).
+ Lemma merge_tsnoc A cs c x y: merge (@tsnoc A cs c x y) == merge (tcons c x y cs).
  Proof.
-   induction Ls.
+   induction cs.
    - reflexivity.
    - simpl tsnoc. simpl merge.
-     rewrite IHLs. simpl merge. now rewrite cupA, (cupC (rT _ _ _)), <-cupA.
+     rewrite IHcs. simpl merge. now rewrite cupA, (cupC (rT _ _ _)), <-cupA.
  Qed.
- Lemma accumulate A Ls L x y (b: mon (A -> A -> Prop)):
-     (forall R, pTs (tsnoc Ls L x y) (t b R) (pT L (b (t b R)) x y)) ->
-     (forall R, pTs Ls (t b R) (pT L (t b R) x y)).
+ (** reformulation of the accumulation lemma using reified terms
+     this is the lemma which is applied in tactic [accumulate]
+  *)
+ Proposition accumulate A (b: mon (A -> A -> Prop)) cs c x y:
+     (forall R, pTs (t b R) (tsnoc cs c x y) (pT (b (t b R)) c x y)) ->
+     (forall R, pTs (t b R) cs (pT (t b R) c x y)).
  Proof.
    setoid_rewrite eTs.
    setoid_rewrite merge_tsnoc. 
@@ -140,39 +161,88 @@ Module reification.
    rewrite <-cup_l. assumption. 
  Qed.
 
- (** for reasoning by symmetry *)
- Lemma by_symmetry L A x y {b s: mon (A -> A -> Prop)} {S: Sym_from converse b s} R:
-     (forall i j, rT L x y j i -> rT L x y i j) ->
-     pT L (s (t b R)) x y ->
-     pT L (b (t b R)) x y.
+ (** ** tools for the [symmetric] tactic *)
+
+ (** reformulation of the symmetry lemma using reified terms
+     this is the lemma which is applied in tactic [symmetric]
+  *)
+ Lemma by_symmetry A c x y {b s: mon (A -> A -> Prop)} {S: Sym_from converse b s} R:
+     (forall i j, rT c x y j i -> rT c x y i j) ->
+     pT (s (t b R)) c x y ->
+     pT (b (t b R)) c x y.
  Proof. rewrite 2!eT. intros C H. now apply by_symmetry. Qed.
  
 End reification.
 
 (** * Exported tactics *)
 
-(** resulting [coinduction] tactic, to start a proof by coinduction *)
 Declare ML Module "reification". 
+
+(** ** starting a proof by (enhanced) coinduction *)
+(** when the goal is of the shape
+
+    [forall x y..., gfp b u v /\ forall z, P -> gfp b s t]
+
+    where x,y... may appear in u, v, P, s, t and z may appear in P, s ,t
+    (more complex alternations of quantifiers/conjunctions/implications being allowed)
+    and [b] is the function for the considered coinductive relation
+
+    [coinduction R H] moves to a goal
+
+    R: A -> A -> Prop
+    H: forall x y..., t b R u v /\ forall z, P -> t b R s t
+    -------------------------------------------------------
+    forall x y..., b (t b R) u v /\ forall z, P -> b (t b R) s t
+
+    [R] is the bisimulation up-to candidate.
+    [H] expresses the pairs [R] is assumed to contain.
+    Those pairs are actually assumed to be only in [t b R], the closure of [R] under the companion, simply because this is more convenient in practice.
+    Note the additional occurrences of [b] in the conclusion: now we should play at least one step of the coinductive game for all pairs inserted in the candidate.
+    Also note that [H] maybe an introduction pattern.
+ *)
+(** we use the OCaml defined [apply_coinduction] tactic, whose role is:
+    - to parse the goal to recognise a bisimulation candidate
+    - to `apply' [reification.coinduction] with reified arguments corresponding to that candidate
+    - to `change' the new goal to get rid of the reified operations and get back to a goal resembling the initial one
+    (The last step could be implemented with [simpl reification.pT], but this would result in unwanted additional simplifications, and this resets names of bound variables in a very bad way. This is why we spend time in OCaml to reconstruct a type for the new goal by following syntactically the initial one.)
+  *)
 Tactic Notation "coinduction" simple_intropattern(R) simple_intropattern(H) :=
   apply_coinduction; intros R H.
 
-(** tactic for reasoning on symmetric candidates with symmetric functions *)
-Tactic Notation "symmetric" "using" tactic(tac) :=
-  apply_by_symmetry; [simpl reification.rT; tac|].
+(** ** accumulating knowledge in a proof by enhanced coinduction *)
 
-Tactic Notation "symmetric" :=
-  symmetric using (solve[clear;firstorder]||fail "could not get symmetry automatically").
+(** when the goal is of the shape, typically obtained after starting a proof by coinduction and    performing one step of the coinductive game:
 
-(* old symmetry-solving tactic *)
-(*
-Ltac solve_sym := solve [
-  repeat (rewrite converse_sup; apply sup_spec; intros);
-  rewrite converse_pair;
-  repeat (eapply eleq_xsup_all; intros);
-  trivial ] || idtac "could not get symmetry automatically".
-*)
+    R: A -> A -> Prop
+    H: forall x y, t b R u v
+    H': forall x y z, P -> t b R s t
+    --------------------------------
+    forall i j, t b R p q
 
-(** accumulation tactic (once a proof by coinduction has been started) *)
+    (more complex alternations of quantifiers/conjunctions/implications being allowed in both hypotheses and conclusion)
+
+    [accumulate H''] moves to a goal
+
+    R: A -> A -> Prop
+    H: forall x y, t b R u v
+    H': forall x y z, P -> t b R s t
+    H'': forall i j, t b R p q
+    --------------------------------
+    forall i j, b (t b R) p q
+
+    The conclusion has saved as an hypothesis [H''],
+    and a [b] has been inserted in the conclusion, so that we have to play at least one step of the coinductive game on the added pairs
+
+    Like for [coinduction], [H''] maybe an introduction pattern.
+ *)
+
+(** the implementation is a bit more involved:
+    - we first find the current bisimulation candidate, using the OCaml tactic [find_candidate]
+    - we successively revert all assumptions about this candidate into the conclusion
+    - we use the OCaml tactic [apply_accumulate] in order to reify the goal, apply [reification.accumulate] with appropriate arguments, and get rid of the reified operations 
+    - then we move the hypotheses back to the context,
+    - and we introduce the new hypothesis
+  *)
 Ltac xaccumulate n R tbR :=
   lazymatch goal with
   | H: context[tbR _ _] |- _ => revert H; xaccumulate (S n) R tbR; intro H
@@ -189,7 +259,34 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
   end.
 
 
-(** performing a single step (equivalent to [accumulate _], except that we do not deal with composite candidates) *)
+(** reasoning on symmetric candidates with symmetric functions *)
+(** this tactic makes it possible to play only half of the coinductive game in cases where both the game and the current goal are symmetric:
+    - that the game is symmetric is inferred using the typeclasse [Sym_from]
+    - that the goal is symmetric is proven using the given tactic (by default, [firstorder])
+    the goal should be of the form
+    [forall x y..., b (t b R) u v] 
+    it moves to a goal of the form
+    [forall x y..., s (t b R) u v] 
+    ([t] is the companion, [b] the function for the coinductive game, [s] the function for the `half of [b]'; conjunctions are also allowed, like in the other tactics)
+ *)
+(** as above, we use the OCaml defined tactic [apply_by_symmetry] in order to apply the lemma [reification.by_symmetry] and set the resulting goal back into a user-friendly shape *)
+Tactic Notation "symmetric" "using" tactic(tac) :=
+  apply_by_symmetry; [simpl reification.rT; tac|].
+Tactic Notation "symmetric" :=
+  symmetric using (solve[clear;firstorder]||fail "could not get symmetry automatically").
+
+(* old symmetry-solving tactic *)
+(*
+Ltac solve_sym := solve [
+  repeat (rewrite converse_sup; apply sup_spec; intros);
+  rewrite converse_pair;
+  repeat (eapply eleq_xsup_all; intros);
+  trivial ] || idtac "could not get symmetry automatically".
+*)
+
+
+(** performing a single step 
+    (equivalent to [accumulate _], except that we do not deal with composite candidates and the coinductive proof need not be started) *)
 Ltac step :=
   match goal with
   | |- gfp ?b ?x ?y => apply (proj2 (gfp_fp b x y))

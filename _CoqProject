@@ -1,3 +1,5 @@
+-arg -w -arg -undo-batch-mode
+
 -R . Coinduction
 -I .
 

@@ -56,6 +56,7 @@ Section s.
     Fail symmetric. 
     coinduction R H.
     Fail symmetric.             (* TOFIX: message *)
+    symmetric using idtac.
   Abort.  
   Goal forall n m, (forall a, gfp b' (n+a) (a+m)) /\ (forall b, gfp b' (b+m) (n+b)).
     coinduction R H.
