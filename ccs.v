@@ -98,9 +98,11 @@ Module CCS(Export M: N).
  Notation B := (B b).
  Notation T := (t B).
  Notation t := (t b).
- Notation "x ≡[ R ] y" := (t R x y) (at level 80). 
+ (** notations  for easing readability in proofs by enhanced coinduction *)
+ Notation "x ≡[ R ] y" := (t R x y) (at level 80).
  Notation "x ≡ y" := (t _ x y) (at level 80). 
  Notation "x [≡] y" := (b (body t _) x y) (at level 80).
+
  
  (** Some valid laws  *)
  Lemma parC: forall p q, p \| q ~ q \| p.
@@ -463,10 +465,10 @@ Module CCS(Export M: N).
    | _ => idtac
    end.
 
- (** setoid_rewriting is extremely slow in trying to use the fact that [~] is always a subrelation of R]
-     in order to improve compilation time, we use the following notation and duplicate of [unfold_rep]
-     TODO: fix this in a more satisfactory way. *)
- Notation "` H" := (rel_gfp_t _ H) (at level 2).
+ (* setoid_rewriting is extremely slow in trying to use the fact that [~] is a subrelation of [t R] or [T f R]
+    in order to improve compilation time, we use the following notation and duplicate of [unfold_rep]
+    TODO: fix this in a more satisfactory way. *)
+ Notation "` H" := (rel_gfp_t (b:=b) _ H) (at level 2).
  Lemma unfold_rep' R p: t R (!p) (!p \| p).
  Proof. apply rel_gfp_t, unfold_rep. Qed.
  

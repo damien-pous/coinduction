@@ -17,11 +17,26 @@ Module streams.
  Program Definition b: mon (S -> S -> Prop) :=
    {| body R s t := hd s = hd t /\ R (tl s) (tl t) |}.
  Next Obligation. firstorder. Qed.
+
+ (** associated relation *)
+ Infix "~" := (gfp b) (at level 70).
+ 
+ (** associated companions  *)
  Notation T := (t (B b)).
  Notation t := (t b).
 
- Infix "~" := (gfp b) (at level 70). 
-
+ (** notations  for easing readability in proofs by enhanced coinduction *)
+ Notation "x ≡[ R ] y" := (t R x y) (at level 80).
+ Notation "x ≡ y" := (t _ x y) (at level 80). 
+ Notation "x [≡] y" := (b (body t _) x y) (at level 80).
+ 
+ (* setoid_rewriting is extremely slow in trying to use the fact that [~] is a subrelation of [t R] or [T f R]
+    in order to improve compilation time, we specialize the corresponding instances
+    TODO: fix this in a more satisfactory way. *)
+ Local Remove Hints rel_gfp_t rel_gfp_T: typeclass_instances.
+ Instance rel_gfp_t_: forall R, subrelation (gfp b) (t R) := (@rel_gfp_t _ b).
+ Instance rel_gfp_T_: forall f R, subrelation (gfp b) (T f R) := (@rel_gfp_T _ b).
+   
  (** [eq] is a post-fixpoint, thus [const eq] is below [t] *)
  Lemma eq_t: const eq <= t.
  Proof.
@@ -112,7 +127,7 @@ Module streams.
  Proof.
    coinduction R HR. intros x. split; ssimpl.
     nia.
-    rewrite HR. rewrite plus_0x. apply HR. 
+    rewrite HR, plus_0x. apply HR. 
  Qed.
  
  Lemma shuf_1x: forall x, c 1 @ x ~ x.
