@@ -56,6 +56,7 @@ module Cnd = struct
   let abs   = get_fun_2 path "abs"
   let cnj   = get_fun_2 path "cnj"
   let ft    = get_fun_2 path "fT"
+  let pt_   = get_const path "pT"
   let pt    = get_fun_5 path "pT"
   let tnil  = get_fun_1 path "tnil"
   let tcons = get_fun_5 path "tcons"
@@ -151,11 +152,12 @@ let apply mode goal =
      - [x] is [fun x y H => (u, fun z => p)]
      - [y] is [fun x y H => (v, fun z => q)]
 
-     the OCaml type of [g] is a bit complicated: [int -> (int -> constr) -> constr]
-     intuitively, [g i REL'] should be [e] where [REL] has beend replaced by [REL']
+     the OCaml type of [g] is a bit complicated: [bool -> int -> (int -> constr) -> constr]
+     intuitively, [g true i REL'] should be [e] where [REL] has beend replaced by [REL']
      the integers are there to deal with de Bruijn indices:
      - in the `Coinduction case, [REL'] will involved a [mkRel] whose index depends on the depth at wich it gets replaced; [i] is used to record the current depth 
      - in the other cases, [REL'] will constructed from the context so that integers will just be ignored 
+     the Boolean is only used for the `By_symmetry mode: setting it to false makes it possible to reverse all pairs in the candidate
    *)
   let rec parse e =
     match kind sigma e with
@@ -166,7 +168,7 @@ let apply mode goal =
            Cnd.abs w (mkLambda(i,w,c)),
            mkLambda(i,w,x),
            mkLambda(i,w,y),
-           (fun l r -> mkProd(i,w,g (l+1) r)))
+           (fun v l r -> mkProd(i,w,g v (l+1) r)))
     | App(c,[|p1;p2|])          (* conjunction *)
          when c=Lazy.force Coq.and_ ->
        let (aslb,r, c1,x1,y1,g1) = parse p1 in
@@ -178,14 +180,14 @@ let apply mode goal =
         Cnd.cnj c1 c2,
         Coq.pair (Cnd.ft a c1) (Cnd.ft a c2) x1 x2,
         Coq.pair (Cnd.ft a c1) (Cnd.ft a c2) y1 y2,
-       (fun l r -> mkApp(c,[|g1 l r;g2 l r|])))
+       (fun v l r -> mkApp(c,[|g1 v l r;g2 v l r|])))
     | App(c,[|s;l;b;x;y|])      (* gfp s l b x y *)
          when mode=`Coinduction &&
                 c=Lazy.force Cnd.gfp ->
        ((get_type s,s,l,b),
         mkApp(c,[|s;l;b|]),
         Lazy.force Cnd.hol,x,y,
-        (fun l r -> mkApp(r l,[|x;y|])))
+        (fun v l r -> mkApp(r l,if v then [|x;y|] else [|y;x|])))
     | App(c,[|s;l;tb;r;x;y|])    (* body s l (t _ _ b) r x y *)
          when mode<>`Coinduction && mode <>`By_symmetry &&
                 c=Lazy.force Cnd.body_ ->
@@ -194,7 +196,7 @@ let apply mode goal =
           ((get_type s,s,l,b),
            mkApp(c,[|s;l;tb;r|]),
            Lazy.force Cnd.hol,x,y,
-           (fun l r -> mkApp(r l,[|x;y|])))
+           (fun v l r -> mkApp(r l,if v then [|x;y|] else [|y;x|])))
        | _ -> error "unrecognised candidate")
     | App(c,[|s;l;b;tbr;x;y|])    (* body s l b tbr x y *)
          when mode =`By_symmetry &&
@@ -202,7 +204,7 @@ let apply mode goal =
           ((get_type s,s,l,b),
            mkApp(c,[|s;l;b;tbr|]),
            Lazy.force Cnd.hol,x,y,
-           (fun l r -> mkApp(r l,[|x;y|])))
+           (fun v l r -> mkApp(r l,if v then [|x;y|] else [|y;x|])))
     | _ -> error "unrecognised candicate"
   in
 
@@ -235,15 +237,15 @@ let apply mode goal =
             let (_,r,d,u,v,l') = parse l in
             let (a,b,r',cs,c,x,y,g) = parse_acc n q in
             if r<>r' then error "only one coinductive relation is allowed";
-            (a,b,r,Cnd.tcons a d u v cs, c, x, y, mkProd(i,l' 0 (fun _ -> r),g))
+            (a,b,r,Cnd.tcons a d u v cs, c, x, y, mkProd(i,l' true 0 (fun _ -> r),g))
          | _ -> error "anomaly, mismatch in hypotheses number"
        end
     | _ ->                      (* 0 *)
        let ((a,s,l,b),r,c,x,y,e') = parse e in
        (a,b,r,Cnd.tnil a, c, x, y,
         mkArrowR
-          (e' 0 (fun _ -> r))
-          (e' 0 (fun _ -> Cnd.body s l b r)))
+          (e' true 0 (fun _ -> r))
+          (e' true 0 (fun _ -> Cnd.body s l b r)))
   in
 
   (* main entry point *)
@@ -265,12 +267,12 @@ let apply mode goal =
       *)
      let tr i j = Cnd.body s l (Cnd.t s l b) (mkRel (i+j)) in
      let btr j = Cnd.body s l b (tr 2 j) in
-     let p' = mkProd (Context.nameR (Names.Id.of_string "R"), s, (mkArrowR (g 0 (tr 1)) (g 0 btr)))  in
+     let p' = mkProd (Context.nameR (Names.Id.of_string "R"), s, (mkArrowR (g true 0 (tr 1)) (g true 0 btr)))  in
      tclTHEN (Tactics.apply (Cnd.coinduction a b c x y))
        (Tactics.convert_concl ~check:true p' DEFAULTcast)
      
   | `By_symmetry ->
-     let ((a,_,_,b),r,c,x,y,g) = parse (Tacmach.pf_concl goal) in
+     let ((a,s,_,b),r,c,x,y,g) = parse (Tacmach.pf_concl goal) in
      (* several catches here...
 
         1. We would like to do just
@@ -284,8 +286,7 @@ let apply mode goal =
 
         3. after eapplying [by_symmetry], we get three subgoals and we want to
         - run typeclass resolution on the first one
-        - do nothing on the second one (handled later in Ltac)
-        - do a change with a nice type on the third one
+        - do a change with nice types on the second and third ones 
         I don't know how to get access to those three goals separately (e.g., the tclTHENLAST tacticial has a different type than the tclTHEN I'm using here...), so that I take look at the resulting goals to recognise who is who.
       *)
      let p = Cnd.pt a r c x y in
@@ -296,17 +297,24 @@ let apply mode goal =
             let goal = Goal.print goal in
             let sigma = Tacmach.project goal in
             match kind sigma (Tacmach.pf_concl goal) with
-            (* first subgoal *)
+            (* first subgoal (typeclass resolution)*)
             | App(c,_) when c=Lazy.force Cnd.sym_from ->
                Class_tactics.typeclasses_eauto [Class_tactics.typeclasses_db] ~depth:(Some 5)
-            (* third subgoal *)
-            | App(_,[|_;s;_;_;_|]) ->
-               (* here we need to look at the goal anyways, in order to discover the function [s] found by typeclass resolution and use it to give a nice type *)
-               let p' = (g 0 (fun _ -> s))  in
+            (* third subgoal (main goal) is of the shape [pT a r' c x y] *)
+            | App(c,[|_;r';_;_;_|]) when c=Lazy.force Cnd.pt_ ->
+               (* here we need to look at the goal anyways, in order to discover the relation [r'] built from the function found by typeclass resolution, and use it to give a nice type *)
+               let p' = (g true 0 (fun _ -> r'))  in
                Tactics.convert_concl ~check:true p' DEFAULTcast
-            (* second subgoal *)               
-            | _ -> tclUNIT ()))) 
-     
+            (* second subgoal (symmetry argument) *)               
+            | _ -> 
+               let p' =
+                 mkProd (Context.nameR (Names.Id.of_string "R"), s,
+                         mkArrowR (g true 1 mkRel) (g false 2 mkRel))
+               in
+               (* Feedback.msg_warning (Printer.pr_leconstr_env env sigma p'); *)
+               Tactics.convert_concl ~check:true p' DEFAULTcast
+       )))
+
 }
 
 TACTIC EXTEND coinduction_reify

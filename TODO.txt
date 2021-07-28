@@ -1,7 +1,5 @@
 use Coqlib.lib_ref 
 
-better symmetry lemma (avoid pairs) ?
-
 extract ccs and streams as separate packages? (they are slow to compile)
 
 add renaming in CCS ? (explicit on processes / as a LTS construction)

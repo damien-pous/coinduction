@@ -188,3 +188,7 @@ Global Opaque pair.
 Lemma converse_sup S I P (f: I -> relation S):
   converse (sup P f) == sup P (fun i => converse (f i)).
 Proof. simpl. firstorder. Qed.
+
+Lemma converse_cup S (R R': relation S):
+  converse (cup R R') == cup (converse R) (converse R').
+Proof. simpl. firstorder. Qed.

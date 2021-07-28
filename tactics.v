@@ -15,7 +15,7 @@ we provide three tactics:
 *)
 
 
-Require Import coinduction rel.
+Require Import lattice coinduction rel.
 Set Implicit Arguments.
 
 
@@ -162,15 +162,29 @@ Module reification.
  Qed.
 
  (** ** tools for the [symmetric] tactic *)
-
+ 
+ Lemma converse_rT A c x y: converse (@rT A c x y) == rT c y x.
+ Proof.
+   induction c; simpl rT; intros i j.
+   - apply converse_pair.
+   - etransitivity. apply converse_sup. refine (sup_weq _ _).
+     reflexivity. intros b. apply H.
+   - etransitivity. apply converse_cup. apply (@cup_weq _ _ _ _ (IHc1 _ _) _ _ (IHc2 _ _)).
+ Qed.
+     
  (** reformulation of the symmetry lemma using reified terms
      this is the lemma which is applied in tactic [symmetric]
   *)
  Lemma by_symmetry A c x y {b s: mon (A -> A -> Prop)} {S: Sym_from converse b s} R:
-     (forall i j, rT c x y j i -> rT c x y i j) ->
-     pT (s (t b R)) c x y ->
-     pT (b (t b R)) c x y.
- Proof. rewrite 2!eT. intros C H. now apply by_symmetry. Qed.
+   (* alternative to the hypothesis below: *)
+   (* (forall i j, rT c x y j i -> rT c x y i j) -> *)
+   (forall R, pT R c x y -> pT R c y x) ->
+   pT (s (t b R)) c x y ->
+   pT (b (t b R)) c x y.
+ Proof.
+   rewrite 2!eT. intros C H. apply by_symmetry. 2: assumption.
+   rewrite converse_rT, <-eT. apply C. now rewrite eT. 
+ Qed.
  
 End reification.
 
@@ -271,7 +285,7 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
  *)
 (** as above, we use the OCaml defined tactic [apply_by_symmetry] in order to apply the lemma [reification.by_symmetry] and set the resulting goal back into a user-friendly shape *)
 Tactic Notation "symmetric" "using" tactic(tac) :=
-  apply_by_symmetry; [simpl reification.rT; tac|].
+  apply_by_symmetry; [simpl reification.pT; tac|].
 Tactic Notation "symmetric" :=
   symmetric using (solve[clear;firstorder]||fail "could not get symmetry automatically").
 
