@@ -32,7 +32,7 @@ Module streams.
  
  (* setoid_rewriting is extremely slow in trying to use the fact that [~] is a subrelation of [t R] or [T f R]
     in order to improve compilation time, we specialize the corresponding instances
-    TODO: fix this in a more satisfactory way. *)
+    TODO: this is still not really efficient, fix this in a more satisfactory way. *)
  Local Remove Hints rel_gfp_t rel_gfp_T: typeclass_instances.
  Instance rel_gfp_t_: forall R, subrelation (gfp b) (t R) := (@rel_gfp_t _ b).
  Instance rel_gfp_T_: forall f R, subrelation (gfp b) (T f R) := (@rel_gfp_T _ b).
@@ -127,7 +127,15 @@ Module streams.
  Proof.
    coinduction R HR. intros x. split; ssimpl.
     nia.
-    rewrite HR, plus_0x. apply HR. 
+    (* TOTHINK (on slowness of setoid_rewriting with subrelations)
+       below: second rewrite below really slow, 
+       because [partial_application_tactic] is very long to fail
+       doing
+       Local Hint Extern 3 (Proper _ _) => proper_subrelation : typeclass_instances.
+       solves it (by trying [proper_subrelation] first)
+       but this makes other rewrites much slower afterwards...
+     *)
+    rewrite HR. rewrite plus_0x. apply HR. 
  Qed.
  
  Lemma shuf_1x: forall x, c 1 @ x ~ x.
