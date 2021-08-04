@@ -20,7 +20,6 @@ build: [
 install: [make "install"]
 depends: [
   "coq" {(>= "8.13")}
-  "coq-aac-tactics" 
 ]
 
 tags: [
@@ -28,8 +27,6 @@ tags: [
   "keyword:up to techniques"
   "keyword:companion"
   "keyword:bisimilarity"
-  "keyword:streams"
-  "keyword:CCS"
   "logpath:Coinduction"
 ]
 authors: [

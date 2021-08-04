@@ -11,7 +11,7 @@ It contains:
  - parametrised coinduction, as proposed by Hur et al.
  - powerful symmetry arguments
  - compatibility and respectfulness
-As well as examples for using the library: 
+Examples on how to use the library may be found in the associated coq-coinduction-examples package: 
  - a formalisation of Hur et al's toy example on divergence 
  - a formalisation of Rutten's stream calculus
  - a formalisation of Milner's calculus of communicating systems (CCS)
@@ -21,9 +21,6 @@ As well as examples for using the library:
  + `coinduction.v` : abstract theory of coinduction in complete lattices, companion
  + `rel.v`         : tools for the complete lattice of binary relations
  + `tactics.v`     : tactics for coinductve relations
- + `divergence.v`  : Hur et al's example on divergence 
- + `streams.v`     : Rutten's stream calculus 
- + `ccs.v`         : Milner's CCS 
 
 ## Meta
 
@@ -33,7 +30,6 @@ As well as examples for using the library:
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
 - License: [GNU LGPL](LICENSE)
 - Compatible Coq versions: 8.13 or later
-- Additional dependencies: coq-aac-tactics (for the CCS example only)
 - Coq namespace: `Coinduction`
 - Related publication(s):
   - [Coinduction All the Way Up](https://hal.archives-ouvertes.fr/hal-01259622) doi:[10.1145/2933575.2934564](http://dx.doi.org/10.1145/2933575.2934564)

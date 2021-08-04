@@ -1,8 +1,4 @@
-make stream.v compile faster / understand slowness of setoid_rewrite with subrelations
-
-extract ccs and streams as separate packages? (they are slow to compile)
-
-add renaming in CCS ? (explicit on processes / as a LTS construction)
+understand slowness of setoid_rewrite with subrelations
 
 arbitrary arity / dependent predicates
 

@@ -8,9 +8,6 @@ coinduction.v
 rel.v
 tactics.v
 tests.v
-divergence.v
-streams.v
-ccs.v
 
 reification_i.mlg
 reification.mlpack
