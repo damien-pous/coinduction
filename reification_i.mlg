@@ -51,6 +51,7 @@ module Cnd = struct
   let body_       = get_const "coinduction.body"
   let body        = get_fun_4 "coinduction.body"            
   let t           = get_fun_3 "coinduction.t"
+  let bt          = get_fun_3 "coinduction.bt"
   let gfp         = get_const "coinduction.gfp"
   let sym_from    = get_const "coinduction.Sym_from"
   let hol         = get_const "coinduction.hol"
@@ -123,7 +124,7 @@ let apply mode goal =
      and where REL is constrained by the current mode:
      - should be [gfp b] for some [b] with `Coinduction
      - should be [t b R] for some [b,R] with `Accumulate
-     - should be [b (t b R)] for some [b,R] with `By_symmetry
+     - should be [bt b R] for some [b,R] with `By_symmetry
      
      such a type [e] is interpreted as a bisimulation candidate
 
@@ -190,13 +191,16 @@ let apply mode goal =
            Lazy.force Cnd.hol,x,y,
            (fun v l r -> mkApp(r l,if v then [|x;y|] else [|y;x|])))
        | _ -> error "unrecognised candidate")
-    | App(c,[|s;l;b;tbr;x;y|])    (* body s l b tbr x y *)
+    | App(c,[|s;l;btb;r;x;y|])    (* body s l (bt _ _ b) r x y *)
          when mode =`By_symmetry &&
                 c=Lazy.force Cnd.body_ ->
+       (match kind sigma btb with
+       | App(_,[|_;_;b|]) ->
           ((get_type s,s,l,b),
-           mkApp(c,[|s;l;b;tbr|]),
+           mkApp(c,[|s;l;btb;r|]),
            Lazy.force Cnd.hol,x,y,
            (fun v l r -> mkApp(r l,if v then [|x;y|] else [|y;x|])))
+       | _ -> error "unrecognised candidate")
     | _ -> error "unrecognised candicate"
   in
 
@@ -257,9 +261,9 @@ let apply mode goal =
      (* we cannot use the same trick as above since the candidate [R] does not exist beforehand
         thus we create our own binder (whose name "R" will be overwritten by the subsequent intro in Ltac), and deal with de Bruijn indices explicitly
       *)
-     let tr i j = Cnd.body s l (Cnd.t s l b) (mkRel (i+j)) in
-     let btr j = Cnd.body s l b (tr 2 j) in
-     let p' = mkProd (Context.nameR (Names.Id.of_string "R"), s, (mkArrowR (g true 0 (tr 1)) (g true 0 btr)))  in
+     let tr  j = Cnd.body s l (Cnd.t  s l b) (mkRel (1+j)) in
+     let btr j = Cnd.body s l (Cnd.bt s l b) (mkRel (2+j)) in
+     let p' = mkProd (Context.nameR (Names.Id.of_string "R"), s, (mkArrowR (g true 0 tr) (g true 0 btr)))  in
      tclTHEN (Tactics.apply (Cnd.coinduction a b c x y))
        (Tactics.convert_concl ~check:true p' DEFAULTcast)
      

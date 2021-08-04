@@ -103,7 +103,13 @@ Section s1.
 
  Lemma t_idem: t ° t == t.
  Proof. apply antisym. apply tt_t. now rewrite <-id_t at 2. Qed.
- 
+
+ (** 'guarded companion', convenient later for expressing the [coinduction] and [accumulate] rules *)
+ Definition bt := b ° t.
+
+ Lemma fbt_bt {f}: f <= t -> f°bt <= bt.
+ Proof. intro H. unfold bt. rewrite H. now rewrite compA, compat_t, <-compA, tt_t. Qed.
+   
  (** to sum up: [gfp = t bot = t gfp <= t x] *)
  (** Corollary 3.4 *)
  Corollary t_gfp: t gfp == gfp.
@@ -136,11 +142,12 @@ Section s2.
      [b' = b ° t] rather than just [b].
     The following proposition (Equation 11) shows that we would not get
     anything new by iterating this idea. *)
- Notation b' := (b ° t b).
- Notation t' := (t b').
+ Notation bt := (bt b).
+ Notation t' := (t bt).
  Notation t := (t b).
  Proposition stagnate_t: t == t'.
  Proof.
+   unfold bt.
    apply antisym'. apply leq_t. now rewrite compA, compat_t.
    intro E. apply leq_t.
    rewrite (leq_f_ft b b) at 3.
@@ -150,11 +157,11 @@ Section s2.
  Qed.
 
  (** as a corollary, [b'] is a valid enhancement of [b] (Theorem 3.6) *)
- Corollary enhanced_gfp: gfp b == gfp b'.
+ Corollary enhanced_gfp: gfp b == gfp bt.
  Proof. apply stagnate_t. Qed.
 
  (** and we get a unique enhanced coinduction principle *)
- Corollary coinduction x: x <= b (t x) -> x <= gfp b.
+ Corollary coinduction x: x <= bt x -> x <= gfp b.
  Proof. intro. rewrite enhanced_gfp. now apply leq_gfp. Qed.  
 
 End s2.
@@ -193,6 +200,7 @@ Section s3.
  (** [T] is the companion of [B] *)
  Notation T := (t B).
  Notation t := (t b).
+ Notation bt := (bt b).
 
  (** corresponding second-order coinduction principle *)
  Corollary Coinduction f: f ° b <= b ° (T f) -> f <= t.
@@ -256,7 +264,7 @@ Section s3.
  Qed.
 
  (** Theorem 10.2 *)
- Theorem accumulate y x: y <= b (t (cup x y)) -> y <= t x.
+ Theorem accumulate y x: y <= bt (cup x y) -> y <= t x.
  Proof.
    intro H. set (f:=xaccumulate y x).
    assert (E: y <= f x) by now apply eleq_xsup with tt.
@@ -357,6 +365,7 @@ Section proof_system.
  Notation B := (B b).
  Notation T := (t B).
  Notation t := (t b).
+ Notation bt := (bt b).
 
  Lemma rule_init y: y <= t bot -> y <= gfp b.
  Proof. now intro. Qed.
@@ -367,7 +376,7 @@ Section proof_system.
  Lemma rule_upto f y x: f <= t -> y <= f (t x) -> y <= t x.
  Proof. intros Hf Hy. now rewrite <- (ft_t Hf). Qed.
  
- Lemma rule_coind y x: y <= b (t (cup x y)) -> y <= t x.
+ Lemma rule_coind y x: y <= bt (cup x y) -> y <= t x.
  Proof. apply accumulate. Qed.
 
 End proof_system.
@@ -474,10 +483,11 @@ Section s.
 
  Variable b: mon X.
  Notation t := (t b).
- Notation G' := (G (b ° t)).
+ Notation bt := (bt b).
+ Notation G' := (G bt).
  
  (** Theorem 10.1 *)
- Theorem G_bt: G' == b ° t.
+ Theorem G_bt: G' == bt.
  Proof.
    apply antisym.
     assert (E: G' <= t).
@@ -491,7 +501,7 @@ Section s.
  Proposition G_upto: G' == t ° G'. (* i.e., bt = tbt *)
  Proof.
    rewrite G_bt. apply antisym. intro. apply id_t.
-   now rewrite compA, compat_t, <-compA, tt_t.
+   unfold bt. now rewrite compA, compat_t, <-compA, tt_t.
  Qed.
  
  (* note: tb < bt = tbt < t *)

@@ -78,7 +78,7 @@ Module reification.
      this is the lemma which is applied in tactic [coinduction]
   *)
  Proposition coinduction A (b: mon (A -> A -> Prop)) c x y:
-     (forall R, pT (t b R) c x y -> pT (b (t b R)) c x y) ->
+     (forall R, pT (t b R) c x y -> pT (bt b R) c x y) ->
      pT (gfp b) c x y.
  Proof.
    intro H.
@@ -150,7 +150,7 @@ Module reification.
      this is the lemma which is applied in tactic [accumulate]
   *)
  Proposition accumulate A (b: mon (A -> A -> Prop)) cs c x y:
-     (forall R, pTs (t b R) (tsnoc cs c x y) (pT (b (t b R)) c x y)) ->
+     (forall R, pTs (t b R) (tsnoc cs c x y) (pT (bt b R) c x y)) ->
      (forall R, pTs (t b R) cs (pT (t b R) c x y)).
  Proof.
    setoid_rewrite eTs.
@@ -180,7 +180,7 @@ Module reification.
    (* (forall i j, rT c x y j i -> rT c x y i j) -> *)
    (forall R, pT R c x y -> pT R c y x) ->
    pT (s (t b R)) c x y ->
-   pT (b (t b R)) c x y.
+   pT (bt b R) c x y.
  Proof.
    rewrite 2!eT. intros C H. apply by_symmetry. 2: assumption.
    rewrite converse_rT, <-eT. apply C. now rewrite eT. 
@@ -193,6 +193,7 @@ End reification.
 (** registering constants required in the OCaml plugin  *)
 Register body                    as coinduction.body.
 Register t                       as coinduction.t.
+Register bt                      as coinduction.bt.
 Register gfp                     as coinduction.gfp.
 Register Sym_from                as coinduction.Sym_from.
 
@@ -224,12 +225,12 @@ Declare ML Module "reification".
     R: A -> A -> Prop
     H: forall x y..., t b R u v /\ forall z, P -> t b R s t
     -------------------------------------------------------
-    forall x y..., b (t b R) u v /\ forall z, P -> b (t b R) s t
+    forall x y..., bt b R u v /\ forall z, P -> bt b R s t
 
     [R] is the bisimulation up-to candidate.
     [H] expresses the pairs [R] is assumed to contain.
     Those pairs are actually assumed to be only in [t b R], the closure of [R] under the companion, simply because this is more convenient in practice.
-    Note the additional occurrences of [b] in the conclusion: now we should play at least one step of the coinductive game for all pairs inserted in the candidate.
+    Note the move to [bt] in the conclusion: now we should play at least one step of the coinductive game for all pairs inserted in the candidate.
     Also note that [H] maybe an introduction pattern.
  *)
 (** we use the OCaml defined [apply_coinduction] tactic, whose role is:
@@ -260,7 +261,7 @@ Tactic Notation "coinduction" simple_intropattern(R) simple_intropattern(H) :=
     H': forall x y z, P -> t b R s t
     H'': forall i j, t b R p q
     --------------------------------
-    forall i j, b (t b R) p q
+    forall i j, bt b R p q
 
     The conclusion has saved as an hypothesis [H''],
     and a [b] has been inserted in the conclusion, so that we have to play at least one step of the coinductive game on the added pairs
@@ -296,7 +297,7 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
     - that the game is symmetric is inferred using the typeclasse [Sym_from]
     - that the goal is symmetric is proven using the given tactic (by default, [firstorder])
     the goal should be of the form
-    [forall x y..., b (t b R) u v] 
+    [forall x y..., bt b R u v] 
     it moves to a goal of the form
     [forall x y..., s (t b R) u v] 
     ([t] is the companion, [b] the function for the coinductive game, [s] the function for the `half of [b]'; conjunctions are also allowed, like in the other tactics)
