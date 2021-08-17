@@ -323,6 +323,13 @@ Section symmetry.
  Lemma invol_t: i <= t.
  Proof. apply leq_t, compat_invol. Qed.
 
+ (** reasoning by symmetry on plain post-fixpoints *)
+ Proposition symmetric_pfp x: i x <= x -> x <= s x -> x <= b x.
+ Proof.
+   intros ix sx. rewrite sym_from. apply cap_spec. split. assumption.
+   apply switch. rewrite ix at 1. apply switch in ix. now rewrite <-ix. 
+ Qed. 
+
  (** reasoning by symmetry at the first level *)
  Proposition by_symmetry x y: i x <= x -> x <= s (t y) -> x <= b (t y).
  Proof.

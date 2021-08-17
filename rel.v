@@ -221,3 +221,7 @@ Proof. simpl. firstorder. Qed.
 Lemma converse_cup S (R R': relation S):
   converse (cup R R') == cup (converse R) (converse R').
 Proof. simpl. firstorder. Qed.
+
+Lemma converse_square S (R: relation S):
+  converse (square R) == square (converse R).
+Proof. simpl. firstorder. Qed.
