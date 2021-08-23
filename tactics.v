@@ -276,18 +276,18 @@ Tactic Notation "coinduction" simple_intropattern(R) simple_intropattern(H) :=
     - then we move the hypotheses back to the context,
     - and we introduce the new hypothesis
   *)
-Ltac xaccumulate n R tbR :=
+Ltac xaccumulate n R :=
   lazymatch goal with
-  | H: context[tbR _ _] |- _ => revert H; xaccumulate (S n) R tbR; intro H
+  | H: context[R] |- _ => revert H; xaccumulate (S n) R; intro H
   | _ => apply_accumulate n R
   end.
 
 Tactic Notation "accumulate" simple_intropattern(H) :=
   find_candidate;
   match goal with
-    |- ?tbR = _ -> _ =>
-    match tbR with
-    | body (t _) ?R => intros _; xaccumulate O R tbR; intros H
+    |- ?tR = _ -> _ =>
+    match tR with
+    | body (t _) ?R => intros _; xaccumulate O R; intros H
     end
   end.
 

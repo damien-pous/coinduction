@@ -106,7 +106,7 @@ let find_candidate goal =
   
 let apply mode goal =
   let goal = Goal.print goal in
-  (* let env = Tacmach.pf_env goal in *)
+  let env = Tacmach.pf_env goal in
   let sigma = Tacmach.project goal in
   
   (* when [t] is [A -> A -> Prop], returns [A] *)
@@ -167,7 +167,8 @@ let apply mode goal =
        let (aslb,r, c1,x1,y1,g1) = parse p1 in
        let (_,   r',c2,x2,y2,g2) = parse p2 in
        let (a,_,_,_) = aslb in
-       if r<>r' then error "only one coinductive relation is allowed";
+       if not (Reductionops.is_conv env sigma r r') then
+         error "only one coinductive relation is allowed";
        (aslb,
         r,
         Cnd.cnj c1 c2,
@@ -224,15 +225,16 @@ let apply mode goal =
      the key invariant is that the starting type [e] 
      should be convertible to [pTs a cs r (pT c a r x y)]
    *)
-  let rec parse_acc n e =
+  let rec parse_acc n rname e =
     match kind sigma n with
     | App(_,[|n|]) ->
        begin                    (* S n *)
          match kind sigma e with
          | Prod(i,l,q) ->
             let (_,r,d,u,v,l') = parse l in
-            let (a,b,r',cs,c,x,y,g) = parse_acc n q in
-            if r<>r' then error "only one coinductive relation is allowed";
+            let (a,b,r',cs,c,x,y,g) = parse_acc n rname q in
+            if not (Reductionops.is_conv env sigma r r') then
+              error "only one coinductive relation is allowed";
             (a,b,r,Cnd.tcons a d u v cs, c, x, y, mkProd(i,l' true 0 (fun _ -> r),g))
          | _ -> error "anomaly, mismatch in hypotheses number"
        end
@@ -241,13 +243,13 @@ let apply mode goal =
        (a,b,r,Cnd.tnil a, c, x, y,
         mkArrowR
           (e' true 0 (fun _ -> r))
-          (e' true 0 (fun _ -> Cnd.body s l b r)))
+          (e' true 0 (fun _ -> Cnd.body s l (Cnd.bt s l b) (mkVar rname))))
   in
 
   (* main entry point *)
   match mode with
   | `Accumulate (i,rname) ->
-     let (a,b,_,cs,c,x,y,g) = parse_acc i (Tacmach.pf_concl goal) in
+     let (a,b,_,cs,c,x,y,g) = parse_acc i rname (Tacmach.pf_concl goal) in
      (* here we first revert R and re-introduce it afterwards in order to keep the same name for the candidate.
         we do so in OCaml rather than in Ltac: this makes it possible to avoid the mess with de Bruijn indices *)
      tclTHEN (Tactics.revert [rname])
