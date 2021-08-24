@@ -1,5 +1,9 @@
 understand slowness of setoid_rewrite with subrelations
 
+setup typeclasses for properties of t, bt, T, bT.
+-> better instances for compatibility proofs (Proper for T ?)
+-> avoid sequences like  [apply (ftT_T _ par_t). apply (in_binary_ctx par).] 
+
 arbitrary arity / dependent predicates
 
 derive [mon X] as a sublattice of [X -> X]

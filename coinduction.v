@@ -98,14 +98,14 @@ Section s1.
  Lemma ft_t f: f <= t -> f ° t <= t.
  Proof. intro H. rewrite H. apply tt_t. Qed.
 
- Lemma bt_t: b ° t <= t.
- Proof. apply ft_t, b_t. Qed.
-
  Lemma t_idem: t ° t == t.
  Proof. apply antisym. apply tt_t. now rewrite <-id_t at 2. Qed.
 
  (** 'guarded companion', convenient later for expressing the [coinduction] and [accumulate] rules *)
  Definition bt := b ° t.
+
+ Lemma bt_t: bt <= t.
+ Proof. apply ft_t, b_t. Qed.
 
  Lemma fbt_bt {f}: f <= t -> f°bt <= bt.
  Proof. intro H. unfold bt. rewrite H. now rewrite compA, compat_t, <-compA, tt_t. Qed.
@@ -117,6 +117,9 @@ Section s1.
 
  Corollary gfp_t x: gfp <= t x.
  Proof. now apply t. Qed.
+
+ Corollary gfp_bt x: gfp <= bt x.
+ Proof. now rewrite gfp_pfp, (gfp_t x) . Qed.
 
  Lemma leq_f_ft f: f <= f ° t.
  Proof. now rewrite <-id_t. Qed.
@@ -198,13 +201,14 @@ Section s3.
  Qed.
 
  (** [T] is the companion of [B] *)
- Notation T := (t B).
+ Definition T := t B.
+ Definition bT f := comp b (T f).
  Notation t := (t b).
  Notation bt := (bt b).
 
  (** corresponding second-order coinduction principle *)
- Corollary Coinduction f: f ° b <= b ° (T f) -> f <= t.
- Proof. rewrite <-B_spec, companion_gfp. apply coinduction. Qed.  
+ Corollary Coinduction f: f ° b <= bT f -> f <= t.
+ Proof. unfold bT. rewrite <-B_spec, companion_gfp. apply coinduction. Qed.     
 
  
  (** ** properties of the second order companion (Proposition 6.4) *)
@@ -236,22 +240,35 @@ Section s3.
  Proof. apply id_t. Qed.
  Lemma t_T f: t <= T f.
  Proof. rewrite companion_gfp. apply gfp_t. Qed.
+ Lemma bt_bT f: bt <= bT f.
+ Proof. unfold bt, bT. now rewrite t_T. Qed.
  Lemma b_T f: b <= T f.
  Proof. rewrite b_t. apply t_T. Qed.
+ Lemma bT_T f: bT f <= T f.
+ Proof. unfold bT. rewrite (b_T f). apply TT_T. Qed.
+ Lemma bt_T f: bt <= T f.
+ Proof. rewrite bt_t. apply t_T. Qed.
+ 
+ Lemma gfp_bT f x: gfp b <= bT f x.
+ Proof. rewrite <-bt_bT. apply gfp_bt. Qed.
  Lemma gfp_T f x: gfp b <= T f x.
- Proof. rewrite (gfp_t b x). apply t_T. Qed.
+ Proof. rewrite <-t_T. apply gfp_t. Qed.
 
  (** helpers, to extract components out of [T]  *)
- Lemma fT_T f g: f <= T g -> f ° T g <= T g.
+ Lemma fT_T_ f g: f <= T g -> f ° T g <= T g.
  Proof. intro H. rewrite H. apply TT_T. Qed.
  Lemma fTf_Tf f: f ° T f <= T f.
- Proof. apply fT_T, f_Tf. Qed.
- Lemma ftT_T f g: f <= t -> f ° T g <= T g.
- Proof. intro H. apply fT_T. rewrite H. apply t_T. Qed.
+ Proof. apply fT_T_, f_Tf. Qed.
+ Lemma fT_T f: f <= t -> forall g, f ° T g <= T g.
+ Proof. intros H g. apply fT_T_. rewrite H. apply t_T. Qed.
  Lemma Tf_T f g: f <= T g -> T g ° f <= T g.
  Proof. intro H. rewrite H. apply TT_T. Qed.
  Lemma Cancel f g x y: f <= T g -> x <= T g y -> f x <= T g y.
- Proof. intros Hf Hx. rewrite Hx. now apply fT_T. Qed.
+ Proof. intros Hf Hx. rewrite Hx. now apply fT_T_. Qed.
+
+ Lemma fbT_bT {f}: f <= t -> forall g, f°bT g <= bT g.
+ Proof. intros H g. unfold bT. rewrite H. now rewrite compA, compat_t, <-compA, fT_T. Qed.
+ 
 
  (** * Parametric coinduction: the accumulation rule  *)
  
@@ -307,8 +324,10 @@ Section symmetry.
  Class Sym_from := sym_from: b == (cap s (i ° s ° i)).
  Context {H: Sym_from}.
  Notation B := (B b).
- Notation T := (t B).
+ Notation T := (T b).
  Notation t := (t b).
+ Notation bt := (bt b).
+ Notation bT := (bT b).
 
  (** [i] is compatible  *)
  Lemma compat_invol: compat b i.
@@ -331,7 +350,7 @@ Section symmetry.
  Qed. 
 
  (** reasoning by symmetry at the first level *)
- Proposition by_symmetry x y: i x <= x -> x <= s (t y) -> x <= b (t y).
+ Proposition by_symmetry x y: i x <= x -> x <= s (t y) -> x <= bt y.
  Proof.
    assert(it: i ° t == t). apply antisym'. apply ft_t, invol_t. apply Switch.
    intros Hx Hxy. rewrite (sym_from (t y)). apply cap_spec. split. assumption.
@@ -339,10 +358,10 @@ Section symmetry.
  Qed. 
 
  (** reasoning by symmetry at the second level *)
- Proposition by_Symmetry f g: compat i f -> f ° b <= s ° (T g) -> f ° b <= b ° (T g).
+ Proposition by_Symmetry f g: compat i f -> f ° b <= s ° (T g) -> f ° b <= bT g.
  Proof.
    intros Hf Hfg. apply compat_if_fi in Hf.
-   rewrite sym_from at 2.
+   unfold bT. rewrite sym_from at 2.
    rewrite mcap_o. apply cap_spec. split. assumption.
    change (f ° b <= i ° (s ° i ° T g)). apply Switch.
    rewrite compA, Hf.
@@ -350,8 +369,8 @@ Section symmetry.
    rewrite compA, Hfg, <-2(compA s).
    apply comp_leq. reflexivity.
    assert (iT: i <= T g). rewrite invol_t at 1. apply t_T.
-   rewrite iT at 1. rewrite TT_T.
-   apply Switch. apply fT_T, iT. 
+   rewrite iT at 1. setoid_rewrite TT_T.
+   apply Switch. apply fT_T_, iT. 
  Qed.
 
 End symmetry.
@@ -370,7 +389,7 @@ Section proof_system.
  
  Variable b: mon X.
  Notation B := (B b).
- Notation T := (t B).
+ Notation T := (T b).
  Notation t := (t b).
  Notation bt := (bt b).
 
@@ -399,9 +418,9 @@ Section s.
  Notation b' := (cap b id).
  Notation t' := (t b').
  Notation B' := (B b').
- Notation T' := (t B').
+ Notation T' := (T b').
  Notation B := (B b).
- Notation T := (t B).
+ Notation T := (T b).
  Notation t := (t b).
  
  Lemma b_b't: b <= b' ° t.
@@ -434,8 +453,8 @@ Section s.
  Proof.
    intros S HS g.
    assert (tS: t ° S g <= S g). destruct HS as [->| ->].
-    apply fT_T, t_T.
-    rewrite t_t'. apply fT_T, t_T. 
+    now apply fT_T.
+    rewrite t_t'. now apply fT_T. 
    assert (St: S g ° t <= S g). destruct HS as [->| ->].
     apply Tf_T, t_T. 
     rewrite t_t'. apply Tf_T, t_T. 
@@ -452,13 +471,13 @@ Section s.
  Proposition T'_T: T' == T.
  Proof.
    apply antisym; apply leq_t.
-   transitivity (T' ° B ° T'). now rewrite <-id_t at 3.
+   transitivity (T' ° B ° T'). now setoid_rewrite <-id_t at 3.
    rewrite <-compA. rewrite <-B'S_BS by tauto.
-   rewrite compA, compat_t. 
+   rewrite compA. setoid_rewrite compat_t. 
    now rewrite <-compA, tt_t. 
-   transitivity (T ° B' ° T). now rewrite <-id_t at 3.
+   transitivity (T ° B' ° T). now setoid_rewrite <-id_t at 3.
    rewrite <-compA. rewrite B'S_BS by tauto.
-   rewrite compA, compat_t. 
+   rewrite compA. setoid_rewrite compat_t. 
    now rewrite <-compA, tt_t. 
  Qed.
 
