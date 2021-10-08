@@ -10,7 +10,9 @@ DECLARE PLUGIN "reification"
 
 open Ltac_plugin
 open Stdarg
+open Constr
 open EConstr
+open Proofview
 
 (* pick an element in an hashtbl *)
 let hashtbl_pick t = Hashtbl.fold (fun i x -> function None -> Some (i,x) | acc -> acc) t None
@@ -27,6 +29,19 @@ let force_app f = fun x -> mkApp (Lazy.force f,x)
 
 (* build a partial application *)
 let partial_app n c ca = if n=0 then c else mkApp(c,Array.sub ca 0 n)
+
+(* typecheck a term and propagate universe constraints *)
+let typecheck t =
+  Goal.enter (fun goal ->
+      let goal = Goal.print goal in
+      let env = Tacmach.pf_env goal in
+      let sigma = Tacmach.project goal in
+      let sigma, _ = Typing.solve_evars env sigma t in
+      Unsafe.tclEVARS sigma)
+
+(* corresponding application tactics *)
+let typecheck_and_apply t = tclTHEN (typecheck t) (Tactics.apply t)
+let typecheck_and_eapply t = tclTHEN (typecheck t) (Tactics.eapply t)
 
 (* creating OCaml functions from Coq ones *)
 let get_fun_1 s = let v = get_const s in fun x -> force_app v [|x|]
@@ -66,10 +81,6 @@ module Cnd = struct
   let accumulate  = get_fun_6 "coinduction.accumulate"
   let by_symmetry = get_fun_5 "coinduction.by_symmetry"
 end 
-
-open Constr
-open EConstr
-open Proofview
 
 
 (* finding the bisimulation candidate of an ongoing coinductive proof.
@@ -253,7 +264,7 @@ let apply mode goal =
      (* here we first revert R and re-introduce it afterwards in order to keep the same name for the candidate.
         we do so in OCaml rather than in Ltac: this makes it possible to avoid the mess with de Bruijn indices *)
      tclTHEN (Tactics.revert [rname])
-       (tclTHEN (Tactics.apply (Cnd.accumulate a b cs c x y))
+       (tclTHEN (typecheck_and_apply (Cnd.accumulate a b cs c x y))
           (tclTHEN (Tactics.introduction rname)
              (Tactics.convert_concl ~check:true g DEFAULTcast)
        ))
@@ -266,7 +277,7 @@ let apply mode goal =
      let tr  j = Cnd.body s l (Cnd.t  s l b) (mkRel (1+j)) in
      let btr j = Cnd.body s l (Cnd.bt s l b) (mkRel (2+j)) in
      let p' = mkProd (Context.nameR (Names.Id.of_string "R"), s, (mkArrowR (g true 0 tr) (g true 0 btr)))  in
-     tclTHEN (Tactics.apply (Cnd.coinduction a b c x y))
+     tclTHEN (typecheck_and_apply (Cnd.coinduction a b c x y))
        (Tactics.convert_concl ~check:true p' DEFAULTcast)
      
   | `By_symmetry ->
@@ -290,7 +301,7 @@ let apply mode goal =
      let p = Cnd.pT a r c x y in
      (* Feedback.msg_warning (Printer.pr_leconstr_env env sigma (Cnd.by_symmetry a c x y b)); *)
      tclTHEN (Tactics.convert_concl~check:true p DEFAULTcast)
-       (tclTHEN (Tactics.eapply (Cnd.by_symmetry a c x y b))
+       (tclTHEN (typecheck_and_eapply (Cnd.by_symmetry a c x y b))
        (Goal.enter (fun goal ->
             let goal = Goal.print goal in
             let sigma = Tacmach.project goal in
