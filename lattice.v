@@ -279,7 +279,7 @@ Section mon.
  (** monotone endofunctions *)
  Record mon := { body:> X -> X; Hbody: Proper (leq ==> leq) body }.
  
- (** the following instance are not global: more powerful ones are 
+ (** the following instances are not global: more powerful ones are 
     given at the end of the section *)
  Existing Instance Hbody.
  Instance Hbody' (f: mon): Proper (weq ==> weq) f.
@@ -290,7 +290,7 @@ Section mon.
  Next Obligation. intros ? ? ?. reflexivity. Qed.
 
  (** identity and composition
-     the monotonicity proof are transparent to get strong equalities
+     the monotonicity proofs are transparent to get strong equalities
      - [id ° f = f ° id = f], and
      - [f ° (g ° h) = (f ° g) ° h]
   *)
