@@ -268,7 +268,34 @@ Section s3.
 
  Lemma fbT_bT {f}: f <= t -> forall g, f°bT g <= bT g.
  Proof. intros H g. unfold bT. rewrite H. now rewrite compA, compat_t, <-compA, fT_T. Qed.
- 
+
+ (** [T f R] is always of the shape [t _] *)
+ Lemma T_tT f: T f == t ° T f.
+ Proof.
+   apply antisym.
+   - intro. apply id_t.
+   - rewrite t_T. apply TT_T. 
+ Qed.
+ (** [bt R] is always of the shape [t _] *)
+ Lemma bt_tbt: bt == t ° bt.
+ Proof.
+   apply antisym.
+   - intro. apply id_t.
+   - now apply fbt_bt.
+ Qed.
+
+ (** we can thus transfer universal properties of [t] to [bt], [T], and [bT] 
+     (not used yet)
+  *)
+ Lemma Pt_PTf (P: X -> Prop) (H: forall R, P (t R)) (H': Proper (weq ==> leq) P): forall f R, P (T f R).
+ Proof. intros f R. rewrite T_tT. apply H. Qed.
+ Lemma Pt_Pbt (P: X -> Prop) (H: forall R, P (t R)) (H': Proper (weq ==> leq) P): forall R, P (bt R).
+ Proof. intros R. rewrite bt_tbt. apply H. Qed.
+ Lemma Pt_PbTf (P: X -> Prop) (H: forall R, P (t R)) (H': Proper (weq ==> leq) P): forall f R, P (bT f R).
+ Proof. intros f R. unfold bT. rewrite T_tT. apply (Pt_Pbt H H' _). Qed.
+ (* TOTHINK: 
+    in fact, universal properties of [t] are universal properties of elements of [chain.S] below
+  *)
 
  (** * Parametric coinduction: the accumulation rule  *)
  
@@ -574,12 +601,14 @@ Section s.
    intro x. simpl. apply leq_infx_id. split.
    apply Sb. apply St'. apply b. apply id_t'. 
  Qed.
+ 
  Theorem tt': t == t'.
  Proof.
    apply antisym.
    intro x. rewrite (id_t' x) at 1. now rewrite tS by apply St'.
    apply leq_t, compat_t'.
  Qed.
+ 
  Corollary leq_t' f: f <= t <-> forall s, S s -> f s <= s.
  Proof.
    split.
@@ -588,6 +617,7 @@ Section s.
    rewrite (id_t' x) at 1. rewrite H by apply Sb, St'.
    apply b. rewrite <-tt'. apply t_T.
  Qed.
+ 
  Lemma St x: S (t x).
  Abort.
  Lemma St x: exists tx, S tx /\ tx == t x.

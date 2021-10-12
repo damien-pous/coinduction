@@ -51,69 +51,55 @@ Section s.
   Lemma subrelation_gfp_bT f (R: relation A): subrelation (gfp b) (bT f R).
   Proof. refine (gfp_bT _ _ R). Qed.
 
+  (** helpers to prove that relations are reflexive/symmetric/transitive from algebraic properties *)
+  Lemma build_reflexive (R: relation A): const eq R <= R -> Reflexive R.
+  Proof. intros H x. now apply H. Qed.
+  Lemma build_symmetric (R: relation A): converse R <= R -> Symmetric R.
+  Proof. intros H x y xy. now apply H. Qed.
+  Lemma build_transitive (R: relation A): square R <= R -> Transitive R.
+  Proof. intros H x y z xy yz. now apply H; exists y. Qed.
+  Lemma build_preorder (R: relation A): const eq R <= R -> square R <= R -> PreOrder R.
+  Proof.
+    split.
+    now apply build_reflexive.
+    now apply build_transitive.
+  Qed.
+  Lemma build_equivalence (R: relation A): const eq R <= R -> converse R <= R -> square R <= R -> Equivalence R.
+  Proof.
+    split.
+    now apply build_reflexive.
+    now apply build_symmetric.
+    now apply build_transitive.
+  Qed.
+  
   (** provided that [const eq], [square], and [converse] are below [t], 
     we have that [gfp b], [t R], [bt R], [T f R], and [bT f R] are always equivalence relations. *)
+  (* TOTHINK: use the transfer lemmas [Pt_PT, Pt_Pbt, Pt_PbT]? *)
   (* TOTHINK: setup typclasses to avoid repetitions? *)
   Hypothesis eq_t: const eq <= t.
   Hypothesis square_t: square <= t.
-  Lemma PreOrder_T f R: PreOrder (T f R).
-  Proof.
-    constructor.
-    intro. now apply (fT_T eq_t).
-    intros ? y ???. apply (fT_T square_t). exists y; assumption.
-  Qed.
   Lemma PreOrder_t R: PreOrder (t R).
-  Proof.
-    constructor.
-    intro. now apply (ft_t eq_t).
-    intros ? y ???. apply (ft_t square_t). exists y; assumption.
-  Qed.
+  Proof. apply build_preorder; now apply ft_t. Qed.
   Corollary PreOrder_gfp: PreOrder (gfp b).
-  Proof PreOrder_t bot.
+  Proof. apply PreOrder_t. Qed.
+  Lemma PreOrder_T f R: PreOrder (T f R).
+  Proof. apply build_preorder; now apply fT_T. Qed.  
   Lemma PreOrder_bt R: PreOrder (bt R).
-  Proof.
-    constructor.
-    intro. now apply (fbt_bt eq_t).
-    intros ? y ???. apply (fbt_bt square_t). exists y; assumption.
-  Qed.
+  Proof. apply build_preorder; now apply fbt_bt. Qed.
   Lemma PreOrder_bT f R: PreOrder (bT f R).
-  Proof.
-    constructor.
-    intro. now apply (fbT_bT eq_t).
-    intros ? y ???. apply (fbT_bT square_t). exists y; assumption.
-  Qed.
+  Proof. apply build_preorder; now apply fbT_bT. Qed.
 
   Hypothesis converse_t: converse <= t.
-  Lemma Equivalence_T f R: Equivalence (T f R).
-  Proof.
-    constructor.
-    intro. now apply (fT_T eq_t).
-    intros x y. apply (fT_T converse_t f).
-    intros ? y ???. apply (fT_T square_t). exists y; assumption.
-  Qed.
   Lemma Equivalence_t R: Equivalence (t R).
-  Proof.
-    constructor.
-    intro. now apply (ft_t eq_t).
-    intros x y. apply (ft_t converse_t).
-    intros ? y ???. apply (ft_t square_t). exists y; assumption.
-  Qed.
+  Proof. apply build_equivalence; now apply ft_t. Qed.
   Corollary Equivalence_gfp: Equivalence (gfp b).
-  Proof Equivalence_t bot.
+  Proof. apply Equivalence_t. Qed.
+  Lemma Equivalence_T f R: Equivalence (T f R).
+  Proof. apply build_equivalence; now apply fT_T. Qed.
   Lemma Equivalence_bt R: Equivalence (bt R).
-  Proof.
-    constructor.
-    intro. now apply (fbt_bt eq_t).
-    intros x y. apply (fbt_bt converse_t).
-    intros ? y ???. apply (fbt_bt square_t). exists y; assumption.
-  Qed.
+  Proof. apply build_equivalence; now apply fbt_bt. Qed.
   Lemma Equivalence_bT f R: Equivalence (bT f R).
-  Proof.
-    constructor.
-    intro. now apply (fbT_bT eq_t).
-    intros x y. apply (fbT_bT converse_t).
-    intros ? y ???. apply (fbT_bT square_t). exists y; assumption.
-  Qed.
+  Proof. apply build_equivalence; now apply fbT_bT. Qed.
 End s.
 
 
