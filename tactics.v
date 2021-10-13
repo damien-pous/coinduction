@@ -32,7 +32,7 @@ Set Implicit Arguments.
       becomes 
       [sup_all (fun x => sup_all (fun y => cup (pair (x+y) y) (pair x y)))) <== R]
       which in turn becomes
-      [pT (abs (fun x => abs (fun y => cnj hol hol))) R (fun x y => (x+y,y)) (fun x y => (x,y))]
+      [pT (abs (fun x => abs (fun y => cnj hol hol))) R (fun x y => (x+y,x)) (fun x y => (y,y))]
 
 *)
 Module reification.
