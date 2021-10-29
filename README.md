@@ -11,10 +11,12 @@ It contains:
  - parametrised coinduction, as proposed by Hur et al.
  - powerful symmetry arguments
  - compatibility and respectfulness
+
 Examples on how to use the library may be found in the associated coq-coinduction-examples package: 
  - a formalisation of Hur et al's toy example on divergence 
  - a formalisation of Rutten's stream calculus
  - a formalisation of Milner's calculus of communicating systems (CCS)
+ - a formalisation of Automata and regular expression equivalence
  
 ## Modules
  + `lattice.v`     : complete lattices, monotone functions in such lattices
