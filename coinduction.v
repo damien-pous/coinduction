@@ -128,6 +128,7 @@ Section s1.
  
 End s1.
 Notation compat b f := (f ° b <= b ° f) (only parsing).
+Typeclasses Opaque t.
 Global Opaque t.
 
 Section s2.
@@ -321,6 +322,8 @@ Section s3.
  Qed.
  
 End s3. 
+Typeclasses Opaque B T.
+Global Opaque B.
 
 (** * Symmetry arguments *)
 
@@ -515,6 +518,8 @@ Section s.
 
 End s.
 End respectful.
+
+Global Opaque T.
 
 
 
