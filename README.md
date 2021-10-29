@@ -36,7 +36,7 @@ Examples on how to use the library may be found in the associated coq-coinductio
 
 ## Building and installation instructions
 
-The easiest way to install the latest released version of Graph Theory
+The easiest way to install the latest released version of Coinduction
 is via [OPAM](https://opam.ocaml.org/doc/Install.html):
 
 ```shell
