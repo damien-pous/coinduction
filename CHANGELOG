@@ -1,0 +1,10 @@
+* 29 Oct. 2021: v1.3
+
+- declare some values (t,B,T) as opaque and opaque for typeclasses
+  in order to avoid efficiency issues with unification
+  (cf. https://github.com/damien-pous/coinduction/issues/2)
+
+* 8 Oct. 2021: v1.2
+
+- fixes handling of universes constraints in OCaml plugin
+- new helpers for proving that contextual functions are below the companion
