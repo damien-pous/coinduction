@@ -32,6 +32,8 @@ Section s.
   Notation T := (T b).
   Notation bt := (bt b).
   Notation bT := (bT b).
+  (* TOTHINK: we need to expand [eq] below in order to avoid universe inconsistencies with [RelationAlgebra.srel]; not so clear why... *)
+  Notation const_eq := (const (fun x y => x=y)).
 
   (** [gfp] is always a subrelation of [t R], [bt R], [T f R], and [bT f R] 
       TOTHINK: declare other links in the lattice?
@@ -52,19 +54,19 @@ Section s.
   Proof. refine (gfp_bT _ _ R). Qed.
 
   (** helpers to prove that relations are reflexive/symmetric/transitive from algebraic properties *)
-  Lemma build_reflexive (R: relation A): const eq R <= R -> Reflexive R.
+  Lemma build_reflexive (R: relation A): const_eq R <= R -> Reflexive R.
   Proof. intros H x. now apply H. Qed.
   Lemma build_symmetric (R: relation A): converse R <= R -> Symmetric R.
   Proof. intros H x y xy. now apply H. Qed.
   Lemma build_transitive (R: relation A): square R <= R -> Transitive R.
   Proof. intros H x y z xy yz. now apply H; exists y. Qed.
-  Lemma build_preorder (R: relation A): const eq R <= R -> square R <= R -> PreOrder R.
+  Lemma build_preorder (R: relation A): const_eq R <= R -> square R <= R -> PreOrder R.
   Proof.
     split.
     now apply build_reflexive.
     now apply build_transitive.
   Qed.
-  Lemma build_equivalence (R: relation A): const eq R <= R -> converse R <= R -> square R <= R -> Equivalence R.
+  Lemma build_equivalence (R: relation A): const_eq R <= R -> converse R <= R -> square R <= R -> Equivalence R.
   Proof.
     split.
     now apply build_reflexive.
@@ -76,7 +78,7 @@ Section s.
     we have that [gfp b], [t R], [bt R], [T f R], and [bT f R] are always equivalence relations. *)
   (* TOTHINK: use the transfer lemmas [Pt_PT, Pt_Pbt, Pt_PbT]? *)
   (* TOTHINK: setup typclasses to avoid repetitions? *)
-  Hypothesis eq_t: const eq <= t.
+  Hypothesis eq_t: const_eq <= t.
   Hypothesis square_t: square <= t.
   Lemma PreOrder_t R: PreOrder (t R).
   Proof. apply build_preorder; now apply ft_t. Qed.
