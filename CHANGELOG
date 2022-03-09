@@ -1,3 +1,7 @@
+* 09 Mar. 2022: 
+
+- tactic support for heterogeneous relations of arbitrary arity
+
 * 29 Oct. 2021: v1.3
 
 - declare some values (t,B,T) as opaque and opaque for typeclasses

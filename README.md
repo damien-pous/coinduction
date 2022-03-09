@@ -22,7 +22,7 @@ Examples on how to use the library may be found in the associated coq-coinductio
  + `lattice.v`     : complete lattices, monotone functions in such lattices
  + `coinduction.v` : abstract theory of coinduction in complete lattices, companion
  + `rel.v`         : tools for the complete lattice of binary relations
- + `tactics.v`     : tactics for coinductve relations
+ + `tactics.v`     : tactics for coinductive predicates/relations
 
 ## Meta
 

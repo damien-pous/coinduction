@@ -4,6 +4,7 @@
 Require Import coinduction rel tactics.
 
 Section s.
+
   Variables b c s: mon (nat -> nat -> Prop).
   Infix "~" := (gfp b) (at level 80).
   Notation "x ≡[ R ] y" := (t b R x y) (at level 80). 
@@ -21,6 +22,9 @@ Section s.
     Restart.
     coinduction R [H H'].
   Abort.
+  Goal forall n, n+n ~ n+n.
+    coinduction R H.
+  Abort.
   Goal forall n m (k: n=m), n+n ~ m+m.
     coinduction R H.
   Abort.
@@ -28,7 +32,7 @@ Section s.
     coinduction R H.
   Abort.
   Goal gfp b 5 6 /\ gfp c 7 8.
-    Fail coinduction_reify.
+    Fail coinduction R H.
   Abort.
 
   
@@ -74,3 +78,15 @@ Section s.
   
 End s.
 
+Section h.
+  Variable b: mon (nat -> bool -> nat+bool -> Prop).
+
+  Goal gfp b 4 true (inl 5).
+  Proof.
+    coinduction R H.
+    cut (forall c, t b R 3 c (inr c)). admit.
+    accumulate H'.
+    cut (forall n, t b R n false (inl n)). admit.
+    accumulate H''.
+  Abort.
+End h.
