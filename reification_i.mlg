@@ -72,7 +72,7 @@ module Cnd = struct
   let sym_from    = get_const "coinduction.Sym_from"
   let ar_prp      = get_const "coinduction.PRP"
   let ar_abs      = get_fun_2 "coinduction.ABS"
-  let prd         = get_fun_1 "coinduction.prd"
+  let tuple       = get_fun_1 "coinduction.tuple"
   let hol         = get_const "coinduction.hol"
   let abs         = get_fun_2 "coinduction.abs"
   let cnj         = get_fun_2 "coinduction.cnj"
@@ -128,10 +128,10 @@ let apply mode goal =
   let rec get_arity t = 
     match kind sigma t with
     | Sort _ -> Lazy.force Cnd.ar_prp
-    | Prod(_,a,q) -> Cnd.ar_abs a (get_arity q)
+    | Prod(i,a,q) -> Cnd.ar_abs a (mkLambda(i,a,get_arity q))
     | _ -> error "coinductive object must be a n-ary relation"
   in
-  let prd a xs = mkApp (Cnd.prd a, Array.of_list xs) in
+  let tuple a xs = mkApp (Cnd.tuple a, Array.of_list xs) in
   let swap v xs =
     if v then Array.of_list xs
     else match xs with [x;y] -> [|y;x|]
@@ -202,7 +202,7 @@ let apply mode goal =
            let a = get_arity s in
            ((a,s,l,b),
             mkApp(c,[|s;l;b|]),
-            Lazy.force Cnd.hol,prd a xs,
+            Lazy.force Cnd.hol,tuple a xs,
             (fun v l r -> mkApp(r l,swap v xs)))
         | _ -> assert false
        )
@@ -216,7 +216,7 @@ let apply mode goal =
                let a = get_arity s in
                ((a,s,l,b),
                 mkApp(c,[|s;l;tb;r|]),
-                Lazy.force Cnd.hol,prd a xs,
+                Lazy.force Cnd.hol,tuple a xs,
                 (fun v l r -> mkApp(r l,swap v xs)))
             | _ -> error "unrecognised situation")
         | _ -> assert false
@@ -231,7 +231,7 @@ let apply mode goal =
                let a = get_arity s in           
                ((a,s,l,b),
                 mkApp(c,[|s;l;btb;r|]),
-                Lazy.force Cnd.hol,prd a [x;y],
+                Lazy.force Cnd.hol,tuple a [x;y],
                 (fun v l r -> mkApp(r l,swap v [x;y])))
             | _ -> error "unrecognised situation")
         | _ -> error "binary relation expected for reasonning by symmetry")

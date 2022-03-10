@@ -5,6 +5,7 @@ Require Import coinduction rel tactics.
 
 Section s.
 
+  (** on binary relations on natural numbers *)
   Variables b c s: mon (nat -> nat -> Prop).
   Infix "~" := (gfp b) (at level 80).
   Notation "x ≡[ R ] y" := (t b R x y) (at level 80). 
@@ -39,7 +40,7 @@ Section s.
   Goal 5 ~ 6.
     coinduction R H.
     cut (4 ≡[R] 5). admit.
-    accumulate H'. 
+    accumulate H'.
     cut (3 ≡[R] 2). admit.
     accumulate H''. 
     cut ((forall x, x ≡[R] 1) /\ 0 ≡[R] 18). admit.
@@ -78,15 +79,33 @@ Section s.
   
 End s.
 
+(** support for heterogeneous relations of arbitrary arity *)
 Section h.
   Variable b: mon (nat -> bool -> nat+bool -> Prop).
 
   Goal gfp b 4 true (inl 5).
   Proof.
-    coinduction R H.
+    coinduction R H.            (* TOTHINK: a bit slow, why? *)
     cut (forall c, t b R 3 c (inr c)). admit.
     accumulate H'.
     cut (forall n, t b R n false (inl n)). admit.
     accumulate H''.
+  Abort.
+End h.
+
+(** even dependent arities *)
+Section h.
+  Variable T: nat -> Type.
+  Variable f: forall n, T n.
+  (* we need to specify the complete lattice structure in that case,
+     dependent function spaces are not declared by default as complete lattice instances
+   *)
+  Variable b: mon (L:=CompleteLattice_dfun _ _) (forall n, T n -> T (n+n) -> Prop).
+
+  Goal gfp b _ (f 2) (f 4).
+  Proof.
+    coinduction R H.
+    cut (forall n x, t b R _ (f n) x). admit.
+    accumulate H'. 
   Abort.
 End h.
