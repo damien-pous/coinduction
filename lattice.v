@@ -58,9 +58,10 @@ Next Obligation. firstorder. Qed.
 (** Dependent functions into complete lattices *)
 Definition dpointwise_relation A (X: A -> Type) (R: forall {a}, relation (X a)): relation (forall a, X a)
   := fun f g => forall a, R (f a) (g a). 
+Arguments dpointwise_relation [_] {_} _ /.
 Program Definition CompleteLattice_dfun A (X: A -> Type) (L: forall a, CompleteLattice (X a)): CompleteLattice (forall a, X a) :=
-  {| weq := dpointwise_relation _ (fun _ => weq);
-     leq := dpointwise_relation _ (fun _ => leq);
+  {| weq := dpointwise_relation (fun _ => weq);
+     leq := dpointwise_relation (fun _ => leq);
      sup I P f a := sup P (fun i => f i a);
      inf I P f a := inf P (fun i => f i a);
      cup f g a := cup (f a) (g a);
@@ -73,13 +74,11 @@ Next Obligation.
    now intros f x. 
    intros f g h H H' x. now transitivity (g x).
 Qed.
-Next Obligation. unfold dpointwise_relation. setoid_rewrite weq_spec. firstorder. Qed.
-Next Obligation. unfold dpointwise_relation. setoid_rewrite sup_spec. firstorder. Qed.
-Next Obligation. unfold dpointwise_relation. setoid_rewrite inf_spec. firstorder. Qed.
-Next Obligation. unfold dpointwise_relation. setoid_rewrite cup_spec. firstorder. Qed.
-Next Obligation. unfold dpointwise_relation. setoid_rewrite cap_spec. firstorder. Qed.
-Next Obligation. intro. apply leq_bx. Qed.
-Next Obligation. intro. apply leq_xt. Qed.
+Next Obligation. setoid_rewrite weq_spec. firstorder. Qed.
+Next Obligation. setoid_rewrite sup_spec. firstorder. Qed.
+Next Obligation. setoid_rewrite inf_spec. firstorder. Qed.
+Next Obligation. setoid_rewrite cup_spec. firstorder. Qed.
+Next Obligation. setoid_rewrite cap_spec. firstorder. Qed.
 
 (** Functions into a complete lattice *)
 #[export] Instance CompleteLattice_fun {A X} {L: CompleteLattice X}: CompleteLattice (A -> X) :=
@@ -228,7 +227,7 @@ Section inf.
    Proper (leq --> leq ==> leq) (inf (I:=I)).
  Proof. intros ??????. now dual @sup_leq. Qed.
  Global Instance inf_weq I: Proper (weq ==> weq ==> weq) (inf (I:=I)).
- Admitted. (* Proof. dual @sup_weq. Qed.  *)
+ Proof. apply (@sup_weq _ (@Dual _ L)). Qed.
  
  Lemma leq_infx I (P: I -> Prop) (f: I -> X) i: P i -> inf P f <= f i.
  Proof. dual @leq_xsup. Qed.
