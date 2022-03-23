@@ -445,7 +445,7 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
   match goal with
     |- ?tR = _ -> _ =>
     match tR with
-    | body (t _) ?R => intros _; xaccumulate O R; intros H
+    | body (t _) ?R => intros _; xaccumulate O R; intros H; simpl REL in *
     end
   end.
 
