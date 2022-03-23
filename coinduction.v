@@ -408,7 +408,7 @@ Arguments Involution {_ _} _.
 Arguments Sym_from {_ _} _ _ _.
 
 (** obvious instance of [Sym_from] (default) *)
-Instance sym_from_def {X} {L: CompleteLattice X} {i s: mon X}: Sym_from i (cap s (i ° s ° i)) s.
+#[export] Instance sym_from_def {X} {L: CompleteLattice X} {i s: mon X}: Sym_from i (cap s (i ° s ° i)) s.
 Proof. now cbn. Qed.
 
 

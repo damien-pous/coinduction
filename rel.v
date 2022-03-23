@@ -23,7 +23,7 @@ Program Definition converse {A}: mon (A -> A -> Prop) :=
   {| body R x y := R y x |}.
 Next Obligation. cbv. firstorder. Qed. 
 
-Instance Involution_converse {A}: Involution (@converse A).
+#[export] Instance Involution_converse {A}: Involution (@converse A).
 Proof. now intros ? ?. Qed.
 
 Section s.

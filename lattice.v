@@ -38,7 +38,7 @@ Global Hint Resolve leq_bx leq_xt: core.
 (** * Concrete instances *)
 
 (** Prop is a complete lattice *)
-Program Instance CompleteLattice_Prop: CompleteLattice Prop :=
+#[export] Program Instance CompleteLattice_Prop: CompleteLattice Prop :=
   {| weq:=iff;
      leq:=Basics.impl;
      sup I P f:=exists2 i, P i & f i;
@@ -56,7 +56,7 @@ Next Obligation. firstorder. Qed.
 Next Obligation. firstorder. Qed.
 
 (** Functions into a complete lattice *)
-Program Instance CompleteLattice_fun {A X} {L: CompleteLattice X}: CompleteLattice (A -> X) :=
+#[export] Program Instance CompleteLattice_fun {A X} {L: CompleteLattice X}: CompleteLattice (A -> X) :=
   {| weq:=pointwise_relation A weq;
      leq:=pointwise_relation A leq;
      sup I P f a:=sup P (fun i => f i a);
@@ -376,6 +376,6 @@ Infix "°" := comp (at level 20): lattice.
 Global Opaque cup bot cap top.  (* TODO: check that we still need this *)
 
 (** application as a function [X->X]->X->X is monotone in its two arguments *)
-Instance app_leq {X} {L: CompleteLattice X}: Proper (leq ==> leq ==> leq) body.
+#[export] Instance app_leq {X} {L: CompleteLattice X}: Proper (leq ==> leq ==> leq) body.
 Proof. intros f g fg x y xy. transitivity (f y). now apply f. now apply fg. Qed.
-Instance app_weq {X} {L: CompleteLattice X}: Proper (weq ==> weq ==> weq) body := op_leq_weq_2.
+#[export] Instance app_weq {X} {L: CompleteLattice X}: Proper (weq ==> weq ==> weq) body := op_leq_weq_2.
