@@ -55,12 +55,14 @@ Next Obligation. firstorder. Qed.
 Next Obligation. firstorder. Qed.
 Next Obligation. firstorder. Qed.
 
-(** Functions into a complete lattice *)
-#[export] Program Instance CompleteLattice_fun {A X} {L: CompleteLattice X}: CompleteLattice (A -> X) :=
-  {| weq:=pointwise_relation A weq;
-     leq:=pointwise_relation A leq;
-     sup I P f a:=sup P (fun i => f i a);
-     inf I P f a:=inf P (fun i => f i a);
+(** Dependent functions into complete lattices *)
+Definition dpointwise_relation A (X: A -> Type) (R: forall {a}, relation (X a)): relation (forall a, X a)
+  := fun f g => forall a, R (f a) (g a). 
+Program Definition CompleteLattice_dfun A (X: A -> Type) (L: forall a, CompleteLattice (X a)): CompleteLattice (forall a, X a) :=
+  {| weq := dpointwise_relation _ (fun _ => weq);
+     leq := dpointwise_relation _ (fun _ => leq);
+     sup I P f a := sup P (fun i => f i a);
+     inf I P f a := inf P (fun i => f i a);
      cup f g a := cup (f a) (g a);
      cap f g a := cap (f a) (g a);
      bot a := bot;
@@ -71,13 +73,17 @@ Next Obligation.
    now intros f x. 
    intros f g h H H' x. now transitivity (g x).
 Qed.
-Next Obligation. unfold pointwise_relation. setoid_rewrite weq_spec. firstorder. Qed.
-Next Obligation. unfold pointwise_relation. setoid_rewrite sup_spec. firstorder. Qed.
-Next Obligation. unfold pointwise_relation. setoid_rewrite inf_spec. firstorder. Qed.
-Next Obligation. unfold pointwise_relation. setoid_rewrite cup_spec. firstorder. Qed.
-Next Obligation. unfold pointwise_relation. setoid_rewrite cap_spec. firstorder. Qed.
+Next Obligation. unfold dpointwise_relation. setoid_rewrite weq_spec. firstorder. Qed.
+Next Obligation. unfold dpointwise_relation. setoid_rewrite sup_spec. firstorder. Qed.
+Next Obligation. unfold dpointwise_relation. setoid_rewrite inf_spec. firstorder. Qed.
+Next Obligation. unfold dpointwise_relation. setoid_rewrite cup_spec. firstorder. Qed.
+Next Obligation. unfold dpointwise_relation. setoid_rewrite cap_spec. firstorder. Qed.
 Next Obligation. intro. apply leq_bx. Qed.
 Next Obligation. intro. apply leq_xt. Qed.
+
+(** Functions into a complete lattice *)
+#[export] Instance CompleteLattice_fun {A X} {L: CompleteLattice X}: CompleteLattice (A -> X) :=
+  CompleteLattice_dfun (fun _ => X) (fun _ => L). 
 
 (** Dual lattice *)
 Program Definition Dual {X} {L: CompleteLattice X}: CompleteLattice X :=
@@ -150,7 +156,7 @@ Section sup.
    Proper (leq ==> leq ==> leq) (sup (I:=I)).
  Proof.
    intros P P' HP f f' Hf. apply sup_spec.
-   setoid_rewrite HP. setoid_rewrite Hf.
+   intro i. rewrite (HP i), (Hf i). 
    now apply sup_spec.
  Qed.
  Global Instance sup_weq I: Proper (weq ==> weq ==> weq) (sup (I:=I)) := op_leq_weq_2.
@@ -222,7 +228,7 @@ Section inf.
    Proper (leq --> leq ==> leq) (inf (I:=I)).
  Proof. intros ??????. now dual @sup_leq. Qed.
  Global Instance inf_weq I: Proper (weq ==> weq ==> weq) (inf (I:=I)).
- Proof. dual @sup_weq. Qed. 
+ Admitted. (* Proof. dual @sup_weq. Qed.  *)
  
  Lemma leq_infx I (P: I -> Prop) (f: I -> X) i: P i -> inf P f <= f i.
  Proof. dual @leq_xsup. Qed.
