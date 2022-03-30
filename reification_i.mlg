@@ -22,7 +22,7 @@ let error s = Printf.kprintf (fun s -> CErrors.user_err (Pp.str s)) ("[coinducti
 
 (* access to Coq constants *)
 let get_const s = 
-  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Coqlib.lib_ref s)))
+  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Global.env ()) (Coqlib.lib_ref s)))
 
 (* make an application using a lazy value *)
 let force_app f = fun x -> mkApp (Lazy.force f,x)
@@ -33,7 +33,6 @@ let partial_app n c ca = if n=0 then c else mkApp(c,Array.sub ca 0 n)
 (* typecheck a term and propagate universe constraints *)
 let typecheck t =
   Goal.enter (fun goal ->
-      let goal = Goal.print goal in
       let env = Tacmach.pf_env goal in
       let sigma = Tacmach.project goal in
       let sigma, _ = Typing.solve_evars env sigma t in
@@ -95,7 +94,6 @@ end
    TODO: better solution?
  *)
 let find_candidate goal =
-  let goal = Goal.print goal in
   let sigma = Tacmach.project goal in
   let rec parse e =
     match kind sigma e with
@@ -120,7 +118,6 @@ let find_candidate goal =
  *)
   
 let apply mode goal =
-  let goal = Goal.print goal in
   let env = Tacmach.pf_env goal in
   let sigma = Tacmach.project goal in
 
@@ -288,7 +285,7 @@ let apply mode goal =
      tclTHEN (Tactics.revert [rname])
        (tclTHEN (typecheck_and_apply (Cnd.accumulate a b cs c x))
           (tclTHEN (Tactics.introduction rname)
-             (Tactics.convert_concl ~check:true g DEFAULTcast)
+             (Tactics.convert_concl ~cast:false ~check:true g DEFAULTcast)
        ))
      
   | `Coinduction ->
@@ -300,7 +297,7 @@ let apply mode goal =
      let btr j = Cnd.body s l (Cnd.bt s l b) (mkRel (2+j)) in
      let p' = mkProd (Context.nameR (Names.Id.of_string "R"), s, (mkArrowR (g true 0 tr) (g true 0 btr)))  in
      tclTHEN (typecheck_and_apply (Cnd.coinduction a c b x))
-       (Tactics.convert_concl ~check:true p' DEFAULTcast)
+       (Tactics.convert_concl ~cast:false ~check:true p' DEFAULTcast)
      
   | `By_symmetry ->
      let ((a,s,_,b),r,c,x,g) = parse (Tacmach.pf_concl goal) in
@@ -327,10 +324,9 @@ let apply mode goal =
        | _ -> assert false
      in
      (* Feedback.msg_warning (Printer.pr_leconstr_env env sigma (Cnd.by_symmetry a c x b)); *)
-     tclTHEN (Tactics.convert_concl~check:true p DEFAULTcast)
+     tclTHEN (Tactics.convert_concl ~cast:false ~check:true p DEFAULTcast)
        (tclTHEN (typecheck_and_eapply (Cnd.by_symmetry a' c x b))
        (Goal.enter (fun goal ->
-            let goal = Goal.print goal in
             let sigma = Tacmach.project goal in
             match kind sigma (Tacmach.pf_concl goal) with
             (* first subgoal (typeclass resolution)*)
@@ -340,7 +336,7 @@ let apply mode goal =
             | App(c,[|_;_;r';_|]) when c=Lazy.force Cnd.pT_ ->
                (* here we need to look at the goal anyways, in order to discover the relation [r'] built from the function found by typeclass resolution, and use it to give a nice type *)
                let p' = (g true 0 (fun _ -> r'))  in
-               Tactics.convert_concl ~check:true p' DEFAULTcast
+               Tactics.convert_concl ~cast:false ~check:true p' DEFAULTcast
             (* second subgoal (symmetry argument) *)               
             | _ -> 
                let p' =
@@ -348,7 +344,7 @@ let apply mode goal =
                          mkArrowR (g true 1 mkRel) (g false 2 mkRel))
                in
                (* Feedback.msg_warning (Printer.pr_leconstr_env env sigma p'); *)
-               Tactics.convert_concl ~check:true p' DEFAULTcast
+               Tactics.convert_concl ~cast:false ~check:true p' DEFAULTcast
        )))
 
 }
