@@ -1,4 +1,4 @@
-* 23 Mar. 2022: 
+* 30 Mar. 2022: v1.4
 
 - tactic support for heterogeneous relations of arbitrary and possibly dependent arity
   (cf. https://github.com/damien-pous/coinduction/issues/5)
