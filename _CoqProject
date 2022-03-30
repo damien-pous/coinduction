@@ -9,5 +9,8 @@ rel.v
 tactics.v
 tests.v
 
-reification_i.mlg
-reification.mlpack
+reification.ml
+reification.mli
+reification_g.mlg
+reification_g.mli
+coinduction_plugin.mlpack

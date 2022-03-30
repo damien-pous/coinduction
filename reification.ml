@@ -1,21 +1,10 @@
 (** an OCaml plugin to perform reification and apply the lemmas implementing enhanced coinduction.
     see end-user tactics in [tactics.v]
- *)
-  
+ *)  
 
-DECLARE PLUGIN "reification"
-
-{
-
-
-open Ltac_plugin
-open Stdarg
 open Constr
 open EConstr
 open Proofview
-
-(* pick an element in an hashtbl *)
-let hashtbl_pick t = Hashtbl.fold (fun i x -> function None -> Some (i,x) | acc -> acc) t None
 
 (* raise an error in Coq *)
 let error s = Printf.kprintf (fun s -> CErrors.user_err (Pp.str s)) ("[coinduction] "^^s)
@@ -26,9 +15,6 @@ let get_const s =
 
 (* make an application using a lazy value *)
 let force_app f = fun x -> mkApp (Lazy.force f,x)
-
-(* build a partial application *)
-let partial_app n c ca = if n=0 then c else mkApp(c,Array.sub ca 0 n)
 
 (* typecheck a term and propagate universe constraints *)
 let typecheck t =
@@ -48,17 +34,12 @@ let get_fun_2 s = let v = get_const s in fun x y -> force_app v [|x;y|]
 let get_fun_3 s = let v = get_const s in fun x y z -> force_app v [|x;y;z|]
 let get_fun_4 s = let v = get_const s in fun x y z t -> force_app v [|x;y;z;t|]
 let get_fun_5 s = let v = get_const s in fun x y z t u -> force_app v [|x;y;z;t;u|]
-let get_fun_6 s = let v = get_const s in fun x y z t u r -> force_app v [|x;y;z;t;u;r|]
-let get_fun_7 s = let v = get_const s in fun x y z t u r w -> force_app v [|x;y;z;t;u;r;w|]
-let get_fun_8 s = let v = get_const s in fun x y z t u r w p -> force_app v [|x;y;z;t;u;r;w;p|]
-let get_fun_9 s = let v = get_const s in fun x y z t u r w p q -> force_app v [|x;y;z;t;u;r;w;p;q|]
 
 (* Coq constants *)
 module Coq = struct
   let eq_refl = get_fun_2 "core.eq.refl"
   let and_    = get_const "core.and.type"
   let pair    = get_fun_4 "core.prod.intro"
-  let tt      = get_const "core.unit.tt"
 end
 
 (* Coinduction constants *)
@@ -346,12 +327,3 @@ let apply mode goal =
                (* Feedback.msg_warning (Printer.pr_leconstr_env env sigma p'); *)
                Tactics.convert_concl ~cast:false ~check:true p' DEFAULTcast
        )))
-
-}
-
-TACTIC EXTEND coinduction_reify
-| [ "apply_coinduction" ] -> { Goal.enter (apply `Coinduction) }
-| [ "apply_by_symmetry" ] -> { Goal.enter (apply `By_symmetry) }
-| [ "apply_accumulate" constr(i) ident(r) ] -> { Goal.enter (apply (`Accumulate(i,r))) }
-| [ "find_candidate" ] -> { Goal.enter find_candidate }
-END

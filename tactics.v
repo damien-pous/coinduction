@@ -353,7 +353,7 @@ Register reification.accumulate  as coinduction.accumulate.
 Register reification.by_symmetry as coinduction.by_symmetry.
 
 (** loading the OCaml plugin  *)
-Declare ML Module "reification". 
+Declare ML Module "coinduction_plugin". 
 
 (** ** starting a proof by (enhanced) coinduction *)
 (** when the goal is of the shape

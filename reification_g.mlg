@@ -1,0 +1,22 @@
+(** an OCaml plugin to perform reification and apply the lemmas implementing enhanced coinduction.
+    see end-user tactics in [tactics.v]
+ *)
+  
+
+DECLARE PLUGIN "coinduction_plugin"
+
+{
+
+open Ltac_plugin
+open Stdarg
+open Proofview
+open Reification
+
+}
+
+TACTIC EXTEND coinduction_reify
+| [ "apply_coinduction" ] -> { Goal.enter (apply `Coinduction) }
+| [ "apply_by_symmetry" ] -> { Goal.enter (apply `By_symmetry) }
+| [ "apply_accumulate" constr(i) ident(r) ] -> { Goal.enter (apply (`Accumulate(i,r))) }
+| [ "find_candidate" ] -> { Goal.enter find_candidate }
+END
