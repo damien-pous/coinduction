@@ -2,6 +2,13 @@
 
 Require Import coinduction.
 Set Implicit Arguments.
+
+(* TODO: 
+   - fix slowness
+   - contextual functions for relations of arbitrary arity?
+   - contexts of arbitrary arity?
+   - sharing with relation algebra
+ *)
   
 
 (** * Generic definitions and results about relations *)
@@ -32,6 +39,7 @@ Section s.
   Notation T := (T b).
   Notation bt := (bt b).
   Notation bT := (bT b).
+
   (* TOTHINK: we need to expand [eq] below in order to avoid universe inconsistencies with [RelationAlgebra.srel]; not so clear why... *)
   Notation const_eq := (const (fun x y => x=y)).
 
@@ -85,7 +93,7 @@ Section s.
   Corollary PreOrder_gfp: PreOrder (gfp b).
   Proof. apply PreOrder_t. Qed.
   Lemma PreOrder_T f R: PreOrder (T f R).
-  Proof. apply build_preorder; now apply fT_T. Qed.  
+  Proof. apply build_preorder; now apply fT_T. Qed.   (* TOFIX: slow Qed *)
   Lemma PreOrder_bt R: PreOrder (bt R).
   Proof. apply build_preorder; now apply fbt_bt. Qed.
   Lemma PreOrder_bT f R: PreOrder (bT f R).
@@ -97,11 +105,11 @@ Section s.
   Corollary Equivalence_gfp: Equivalence (gfp b).
   Proof. apply Equivalence_t. Qed.
   Lemma Equivalence_T f R: Equivalence (T f R).
-  Proof. apply build_equivalence; now apply fT_T. Qed.
+  Proof. apply build_equivalence; now apply fT_T. Qed. (* TOFIX: slow Qed *)
   Lemma Equivalence_bt R: Equivalence (bt R).
-  Proof. apply build_equivalence; now apply fbt_bt. Qed.
+  Proof. apply build_equivalence; now apply fbt_bt. Qed. (* TOFIX: slow proof *)
   Lemma Equivalence_bT f R: Equivalence (bT f R).
-  Proof. apply build_equivalence; now apply fbT_bT. Qed.
+  Proof. apply build_equivalence; now apply fbT_bT. Qed. (* TOFIX: slow proof *)
 End s.
 
 
@@ -153,7 +161,11 @@ Proof. intro H. apply Coinduction. now apply unary_ctx_b. Qed.
 Corollary unary_ctx_t_sym_ (b s: mon (S -> S -> Prop)) {H: Sym_from converse b s}:
   (forall R, Proper (b R ==> s (T b unary_ctx R)) f) ->
   unary_ctx <= t b.
-Proof. intro. apply Coinduction, by_Symmetry. apply unary_sym. now apply unary_ctx_b. Qed.
+Proof.
+  intro. apply Coinduction, by_Symmetry. apply unary_sym.
+  apply <- unary_ctx_b.
+  exact H0.                     (* TOFIX: slow *)
+Qed.                            (* TOFIX: slow too *)
 
 
 (** if it is below [t], then the function [f] always preserves [t R], [bt R], [T f R], [bT f R] *)
@@ -165,14 +177,14 @@ Lemma unary_proper_bt b:
 Proof. intros H R x x' Hx. apply (fbt_bt H). now apply in_unary_ctx. Qed.
 Lemma unary_proper_T b g:
   unary_ctx <= t b -> forall R, Proper (T b g R ==> T b g R) f.
-Proof. intros H R x x' Hx. apply (fT_T H). now apply in_unary_ctx. Qed.
+Proof. intros H R x x' Hx. apply (fT_T H). now apply in_unary_ctx. Qed. (* TOFIX: slow *)
 Lemma unary_proper_bT b g:
   unary_ctx <= t b -> forall R, Proper (bT b g R ==> bT b g R) f.
 Proof. intros H R x x' Hx. apply (fbT_bT H). now apply in_unary_ctx. Qed.
 
 Global Instance unary_proper_Tctx b R:
   Proper (T b unary_ctx R ==> T b unary_ctx R) f.
-Proof. intros x x' Hx. apply (fTf_Tf b). now apply in_unary_ctx. Qed.
+Proof. intros x x' Hx. apply (fTf_Tf b). now apply in_unary_ctx. Qed. (* TOFIX: slow Qed *)
 
 End unary.
 Section binary. 
@@ -221,7 +233,7 @@ Proof. intro H. apply Coinduction. now apply binary_ctx_b. Qed.
 Corollary binary_ctx_t_sym_ (b s: mon (S -> S -> Prop)) {H: Sym_from converse b s}:
   (forall R, Proper (b R ==> b R ==> s (T b binary_ctx R)) f) ->
   binary_ctx <= t b.
-Proof. intro. apply Coinduction, by_Symmetry. apply binary_sym. now apply binary_ctx_b. Qed.
+Proof. intro. apply Coinduction, by_Symmetry. apply binary_sym. now apply binary_ctx_b. Qed. (* TOFIX: slow *)
 
 (** if it is below [t], then the function [f] always preserves [t R], [bt R], [T f R], [bT f R] *)
 Lemma binary_proper_t b:
@@ -232,14 +244,14 @@ Lemma binary_proper_bt b:
 Proof. intros H R x x' Hx y y' Hy. apply (fbt_bt H). now apply in_binary_ctx. Qed.
 Lemma binary_proper_T b g:
   binary_ctx <= t b -> forall R, Proper (T b g R ==> T b g R ==> T b g R) f.
-Proof. intros H R x x' Hx y y' Hy. apply (fT_T H). now apply in_binary_ctx. Qed.
+Proof. intros H R x x' Hx y y' Hy. apply (fT_T H). now apply in_binary_ctx. Qed. (* TOFIX: slow Qed *)
 Lemma binary_proper_bT b g:
   binary_ctx <= t b -> forall R, Proper (bT b g R ==> bT b g R ==> bT b g R) f.
 Proof. intros H R x x' Hx y y' Hy. apply (fbT_bT H). now apply in_binary_ctx. Qed.
 
 Global Instance binary_proper_Tctx b R:
   Proper (T b binary_ctx R ==> T b binary_ctx R ==> T b binary_ctx R) f.
-Proof. intros x x' Hx y y' Hy. apply (fTf_Tf b). now apply in_binary_ctx. Qed.
+Proof. intros x x' Hx y y' Hy. apply (fTf_Tf b). now apply in_binary_ctx. Qed. (* TOFIX: slow Qed *)
 
 End binary.
 Section ternary. 
@@ -292,7 +304,7 @@ Proof. intro H. apply Coinduction. now apply ternary_ctx_b. Qed.
 Corollary ternary_ctx_t_sym_ (b s: mon (S -> S -> Prop)) {H: Sym_from converse b s}:
   (forall R, Proper (b R ==> b R ==> b R ==> s (T b ternary_ctx R)) f) ->
   ternary_ctx <= t b.
-Proof. intro. apply Coinduction, by_Symmetry. apply ternary_sym. now apply ternary_ctx_b. Qed.
+Proof. intro. apply Coinduction, by_Symmetry. apply ternary_sym. now apply ternary_ctx_b. Qed. (* TOFIX: slow *)
 
 (** if it is below [t], then the function [f] always preserves [t R], [bt R], [T f R], [bT f R] *)
 Lemma ternary_proper_t b:
@@ -303,14 +315,14 @@ Lemma ternary_proper_bt b:
 Proof. intros H R x x' Hx y y' Hy z z' Hz. apply (fbt_bt H). now apply in_ternary_ctx. Qed.
 Lemma ternary_proper_T b g:
   ternary_ctx <= t b -> forall R, Proper (T b g R ==> T b g R ==> T b g R ==> T b g R) f.
-Proof. intros H R x x' Hx y y' Hy z z' Hz. apply (fT_T H). now apply in_ternary_ctx. Qed.
+Proof. intros H R x x' Hx y y' Hy z z' Hz. apply (fT_T H). now apply in_ternary_ctx. Qed. (* TOFIX: slow Qed *)
 Lemma ternary_proper_bT b g:
   ternary_ctx <= t b -> forall R, Proper (bT b g R ==> bT b g R ==> bT b g R ==> bT b g R) f.
 Proof. intros H R x x' Hx y y' Hy z z' Hz. apply (fbT_bT H). now apply in_ternary_ctx. Qed.
 
 Global Instance ternary_proper_Tctx b R:
   Proper (T b ternary_ctx R ==> T b ternary_ctx R ==> T b ternary_ctx R ==> T b ternary_ctx R) f.
-Proof. intros x x' Hx y y' Hy z z' Hz. apply (fTf_Tf b). now apply in_ternary_ctx. Qed.
+Proof. intros x x' Hx y y' Hy z z' Hz. apply (fTf_Tf b). now apply in_ternary_ctx. Qed. (* TOFIX: slow Qed *)
 
 End ternary.
 End context.
