@@ -1,16 +1,16 @@
 -arg -w -arg -undo-batch-mode
 
--R . Coinduction
--I .
+-R theories/ Coinduction
+-I src/
 
-lattice.v
-coinduction.v
-rel.v
-tactics.v
-tests.v
+theories/lattice.v
+theories/coinduction.v
+theories/rel.v
+theories/tactics.v
+theories/tests.v
 
-reification.ml
-reification.mli
-reification_g.mlg
-reification_g.mli
-coinduction_plugin.mlpack
+src/reification.ml
+src/reification.mli
+src/reification_g.mlg
+src/reification_g.mli
+src/coinduction_plugin.mlpack

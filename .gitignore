@@ -6,10 +6,11 @@
 *.cm*
 *.o
 *.a
+*.d
 html
 _build
 .merlin
 depgraph.*
 Makefile.coq
 Makefile.coq.conf
-reification_g.ml
+src/reification_g.ml
