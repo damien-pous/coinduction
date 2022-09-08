@@ -30,7 +30,7 @@ Examples on how to use the library may be found in the associated coq-coinductio
   - Damien Pous (initial)
 - Coq-community maintainer(s):
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
-- License: [GNU LGPL](LICENSE)
+- License: [GNU LGPL3+]
 - Compatible Coq versions: 8.13 or later
 - Coq namespace: `Coinduction`
 - Related publication(s):
