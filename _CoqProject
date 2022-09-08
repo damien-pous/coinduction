@@ -3,6 +3,8 @@
 -R theories/ Coinduction
 -I src/
 
+-generate-meta-for-package coq-coinduction
+
 theories/lattice.v
 theories/coinduction.v
 theories/rel.v
@@ -13,4 +15,4 @@ src/reification.ml
 src/reification.mli
 src/reification_g.mlg
 src/reification_g.mli
-src/coinduction_plugin.mlpack
+src/plugin.mlpack
