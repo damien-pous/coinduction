@@ -130,6 +130,7 @@ Qed.
 #[export] Instance image_leq {A B} {f: A -> B}: Proper (leq ==> leq) (image f).
 Proof. intros P Q PQ b [? ? ?]. eexists; eauto. now apply PQ. Qed.
 #[export] Instance image_weq {A B} {f: A -> B}: Proper (weq ==> weq) (image f) := op_leq_weq_1.
+  
 Lemma image_id {A} (P: A -> Prop): image id P == P. 
 Proof. firstorder (subst; eauto). Qed.
 Lemma image_comp {A B C} (f: A -> B) (g: B -> C) (P: A -> Prop): image (fun x => g (f x)) P == image g (image f P).
@@ -412,3 +413,61 @@ Global Opaque cup bot cap top.  (* TODO: check that we still need this *)
 #[export] Instance app_leq {X} {L: CompleteLattice X}: Proper (leq ==> leq ==> leq) body.
 Proof. intros f g fg x y xy. transitivity (f y). now apply f. now apply fg. Qed.
 #[export] Instance app_weq {X} {L: CompleteLattice X}: Proper (weq ==> weq ==> weq) body := op_leq_weq_2.
+
+
+(** * Involutions *)
+
+Section involutions.
+  
+ Context {X} {L: CompleteLattice X} {i: mon X}.
+  
+ Class Involution := invol: i ° i == id.
+ 
+ Context {I: Involution}.
+ 
+ Lemma invol' x: i (i x) == x.
+ Proof. apply invol. Qed.
+ 
+ Lemma switch x y: i x <= y <-> x <= i y.
+ Proof. split; (intro H; apply i in H; now rewrite invol' in H). Qed.
+
+ Lemma Switch f g: i ° f <= g <-> f <= i ° g.
+ Proof. split; (intros H x; apply switch, H). Qed.
+ 
+ Lemma invol_fixed x: i x <= x <-> i x == x.
+ Proof.
+   split; intro H. apply antisym'; trivial. apply switch.
+   now apply weq_spec in H.
+ Qed.
+
+ (* TODO: should follow from general adjoint theory since [i -| i] *)
+ Lemma invol_bot: i bot == bot.
+ Proof. apply antisym; trivial. now apply switch. Qed.
+ Lemma invol_cup x y: i (cup x y) == cup (i x) (i y).
+ Proof.
+   apply antisym. 2: apply mon_cup.
+   apply switch. now rewrite <-mon_cup, 2invol'.
+ Qed.
+ Lemma invol_sup P: i (sup P) == sup (image i P).
+ Proof.
+   apply antisym. 2: apply mon_sup.
+   apply switch. rewrite <-mon_sup.
+   rewrite <-image_comp. apply sup_spec.
+   intros x Px. rewrite <- invol'. apply leq_xsup. now exists x.
+ Qed.                                                        
+ Lemma invol_top: i top == top.
+ Proof. apply antisym; trivial. now apply switch. Qed.
+ Lemma invol_cap x y: i (cap x y) == cap (i x) (i y).
+ Proof.
+   apply antisym. apply mon_cap.
+   apply switch. now rewrite mon_cap, 2invol'.
+ Qed.
+ Lemma invol_inf P: i (inf P) == inf (image i P).
+ Proof.
+   apply antisym. apply mon_inf.
+   apply switch. rewrite mon_inf.
+   rewrite <-image_comp. apply inf_spec.
+   intros x Px. rewrite <- (invol' x). apply leq_infx. now exists x.
+ Qed.
+End involutions.
+Arguments Involution {_ _} _.

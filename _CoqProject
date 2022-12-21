@@ -6,6 +6,7 @@
 -generate-meta-for-package coq-coinduction
 
 theories/lattice.v
+theories/tower.v
 theories/companion.v
 theories/rel.v
 theories/tactics.v
