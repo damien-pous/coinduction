@@ -1,16 +1,16 @@
 
 (** * tests for the exported tactics *)
 
-Require Import coinduction rel tactics.
+Require Import tower rel tactics.
 
 Section s.
 
   (** on binary relations on natural numbers *)
   Variables b c s: mon (nat -> nat -> Prop).
   Infix "~" := (gfp b) (at level 80).
-  Notation "x ≡[ R ] y" := (t b R x y) (at level 80). 
-  Notation "x ≡ y" := (t b _ x y) (at level 80). 
-  Notation "x [≡] y" := (bt b _ x y) (at level 80).
+  (* Notation "x ≡[ R ] y" := (t b R x y) (at level 80).  *)
+  (* Notation "x ≡ y" := (t b _ x y) (at level 80).  *)
+  (* Notation "x [≡] y" := (bt b _ x y) (at level 80). *)
   Goal 5 ~ 6.
     coinduction R H.
     Restart.

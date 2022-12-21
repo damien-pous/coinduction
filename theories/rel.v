@@ -18,8 +18,7 @@ Next Obligation. cbv. firstorder. Qed.
 #[export] Instance Involution_converse {A}: Involution (@converse A).
 Proof. now intros ? ?. Qed.
 
-(* TODO: used? generalise? *)
-Lemma converse_sup {A} (P: (A -> A -> Prop) -> Prop): converse (sup P) == sup' P converse. 
+Lemma converse_sup {A I} (f: I -> A -> A -> Prop) P: converse (sup' P f) == sup' P (fun i => converse (f i)). 
 Proof. apply invol_sup. Qed.
 
 Lemma converse_cup S (R R': relation S):

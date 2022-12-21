@@ -1,5 +1,7 @@
 (** * Tactics for coinductive n-ary relations *)
 
+(* TODO: update comments! *)
+
 (**
 we provide three tactics:
 - [coinduction R H] to start a proof by coinduction 
@@ -15,7 +17,7 @@ we provide three tactics:
 *)
 
 
-Require Import lattice coinduction rel.
+Require Import lattice tower rel.
 Set Implicit Arguments.
 
 (** * Arities and relations *)
@@ -148,7 +150,7 @@ Module reification.
  Fixpoint rT [A c]: fT A c -> REL A := 
    match c with
    | hol => EQ
-   | abs _ _ => fun z => sup_all (fun b => rT (z b))
+   | abs _ _ => fun z => sup' top (fun b => rT (z b))
    | cnj _ _ => fun z => let (x,y) := z in cup (rT x) (rT y)
    end.
  
@@ -157,7 +159,7 @@ Module reification.
  Proof.
    induction c; cbn; symmetry.
    - apply EQ_spec.
-   - setoid_rewrite H. apply sup_all_spec.
+   - setoid_rewrite H. rewrite sup_spec. firstorder. 
    - destruct x. rewrite IHc1, IHc2. apply cup_spec.
  Qed. 
 
@@ -194,17 +196,27 @@ Module reification.
  *)
  
  (** ** tools for the [coinduction] tactic *)
- 
+
+
+ Lemma inf_closed_pT A c (x: fT A c): inf_closed (fun y => pT y x).
+ Proof.
+   intros T HT. 
+   rewrite eT. apply inf_spec. intros R TR.
+   rewrite <-eT. apply HT, TR.
+ Qed.
+   
  (** reformulation of the enhanced coinduction lemma using reified terms
      this is the lemma which is applied in tactic [coinduction]
   *)
+ (* Proposition coinduction A c (b: mon (REL A)) (x: fT A c): *)
+ (*     (forall R, pT (t b R) x -> pT (bt b R) x) -> pT (gfp b) x. *)
  Proposition coinduction A c (b: mon (REL A)) (x: fT A c):
-     (forall R, pT (t b R) x -> pT (bt b R) x) -> pT (gfp b) x.
+     (forall R, Chain b R -> pT R x -> pT (b R) x) -> 
+     (pT (gfp b) x).
  Proof.
    intro H.
-   rewrite eT. apply coinduction.
-   rewrite <-eT. apply H.
-   rewrite eT. apply id_t.
+   cut (forall R, Chain b R -> pT R x). intros E. apply E. apply chain_gfp.
+   apply tower. apply inf_closed_pT. apply H.
  Qed.
 
  (* idea: the above lemma can be used as follows: *)
@@ -269,19 +281,20 @@ Module reification.
    - simpl tsnoc. simpl merge.
      rewrite IHcs. simpl merge. now rewrite cupA, (cupC (rT _)), <-cupA.
  Qed.
+
  (** reformulation of the accumulation lemma using reified terms
      this is the lemma which is applied in tactic [accumulate]
   *)
  Proposition accumulate A (b: mon (REL A)) cs c (x: fT A c):
-     (forall R, pTs (tsnoc cs x) (t b R) (pT (bt b R) x)) ->
-     (forall R, pTs cs (t b R) (pT (t b R) x)).
+     (forall R, Chain b R -> pTs (tsnoc cs x) R (pT (b R) x)) ->
+     (forall R, Chain b R -> pTs cs R (pT R x)).
  Proof.
    setoid_rewrite eTs.
-   setoid_rewrite merge_tsnoc. 
-   intros H R HR. rewrite eT. apply accumulate. 
-   rewrite <-eT. apply H. simpl merge. rewrite cup_spec. split.
-   rewrite <-cup_r. apply id_t.
-   rewrite <-cup_l. assumption. 
+   setoid_rewrite merge_tsnoc.
+   intro H.
+   apply ptower. typeclasses eauto. apply inf_closed_pT.
+   intros R CR HR Hyps. apply H; trivial.
+   cbn; apply cup_spec. now rewrite <-eT.
  Qed.
 
  (** ** tools for the [symmetric] tactic *)
@@ -316,15 +329,17 @@ Module reification.
    (** reformulation of the symmetry lemma using reified terms
        this is the lemma which is applied in tactic [symmetric]
     *)
-   Lemma by_symmetry c (x: fT A2 c) {b s: mon (A -> A -> Prop)} {S: Sym_from converse b s} R:
+   Lemma by_symmetry c (x: fT A2 c) {b s: mon (A -> A -> Prop)} {S: Symmetrical converse b s} R (CR: Chain b R):
      (* alternative to the hypothesis below: *)
      (* (forall i j, rT x j i -> rT x i j) -> *)
      (forall R, @pT A2 c R x -> @pT A2 c R (converse_fT x)) ->
-     @pT A2 c (s (t b R)) x ->
-     @pT A2 c (bt b R) x.
+     @pT A2 c (s R) x ->
+     @pT A2 c (b R) x.
    Proof.
-     rewrite 2!eT. intros C H. apply by_symmetry. 2: assumption.
-     rewrite (converse_rT _ x), <-eT. apply C. now rewrite eT. 
+     rewrite 2!eT. intros C H. rewrite symmetrical_chain.
+     apply cap_spec. split; trivial.
+     apply switch. rewrite (converse_rT _ x), <-eT.
+     apply C. now rewrite eT. 
    Qed.
  End sym.
  
@@ -334,10 +349,8 @@ End reification.
 
 (** registering constants required in the OCaml plugin  *)
 Register body                    as coinduction.body.
-Register t                       as coinduction.t.
-Register bt                      as coinduction.bt.
 Register gfp                     as coinduction.gfp.
-Register Sym_from                as coinduction.Sym_from.
+Register Symmetrical             as coinduction.Symmetrical.
 Register PRP                     as coinduction.PRP.
 Register ABS                     as coinduction.ABS.
 Register tuple                   as coinduction.tuple.
@@ -429,10 +442,8 @@ Ltac xaccumulate n R :=
 Tactic Notation "accumulate" simple_intropattern(H) :=
   find_candidate;
   match goal with
-    |- ?tR = _ -> _ =>
-    match tR with
-    | body (t _) ?R => intros _; xaccumulate O R; intros H; simpl REL in *
-    end
+    (* TODO: use something more robust *)
+    |- ?R = _ -> _ => intros _; xaccumulate O R; intros H; simpl REL in *
   end.
 
 
@@ -464,9 +475,4 @@ Ltac solve_sym := solve [
 
 (** performing a single step 
     (equivalent to [accumulate _], except that we do not deal with composite candidates and the coinductive proof need not be started) *)
-Ltac step :=
-  match goal with
-  | |- gfp ?b ?x ?y => apply (proj2 (gfp_fp b x y))
-  | |- body (t ?b) ?R ?x ?y => apply (bt_t b R x y)
-  end;
-  simpl body.
+Ltac step := apply b_chain; simpl body.
