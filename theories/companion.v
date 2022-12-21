@@ -42,8 +42,8 @@ Section s1.
  Lemma compat_sup (P: mon X -> Prop):
    (forall f, P f -> compat f) -> compat (sup P).
  Proof.
-   intros H x. simpl. apply sup_spec. apply forall_image.
-   intros f Hf. rewrite (H _ Hf x). apply b. apply leq_xsup. now exists f. 
+   intros H x. simpl. apply sup_spec. intros f Pf. 
+   rewrite (H _ Pf x). apply b. eapply eleq_xsup; eauto.
  Qed.
 
  (** ** companion *)
@@ -180,14 +180,14 @@ Section s3.
  Program Definition B: mon (mon X) :=
    {| body g := sup (fun f => f ° b <= b ° g) |}.
  Next Obligation.
-   intros g g' Hg x. apply sup_leq. apply image_leq. 
+   intros g g' Hg x. apply sup_leq; trivial. 
    intros f Hf z. now rewrite <-(Hg z).
  Qed.
 
  (** Lemma 6.2 *)
  Lemma B_spec f g: f <= B g <-> f ° b <= b ° g.
  Proof.
-   split; intro H. rewrite H. intro. apply sup_spec. apply forall_image.
+   split; intro H. rewrite H. intro. apply sup_spec. 
    intros h Hh. apply Hh.
    now apply leq_xsup.
  Qed.
@@ -302,9 +302,9 @@ Section s3.
  (** * Parametric coinduction: the accumulation rule  *)
  
  Program Definition xaccumulate y x: mon X :=
-   {| body z := sup (image (fun _:unit => y) (fun _:unit => x <= z)) |}.
+   {| body z := sup' (fun _:unit => x <= z) (fun _:unit => y) |}.
  Next Obligation.
-   intros z z' Hz. apply sup_leq, image_leq.
+   intros z z' Hz. apply sup_leq; trivial.
    intros _ H. now rewrite H.
  Qed.
 
@@ -312,9 +312,9 @@ Section s3.
  Theorem accumulate y x: y <= bt (cup x y) -> y <= t x.
  Proof.
    intro H. set (f:=xaccumulate y x).
-   assert (E: y <= f x) by now apply leq_xsup; exists tt. 
+   assert (E: y <= f x) by now eapply eleq_xsup; eauto.
    cut (f <= t). intro F. now rewrite E.
-   apply Coinduction. intro z. apply sup_spec, forall_image. intros _ Hxz.
+   apply Coinduction. intro z. apply sup_spec. intros _ Hxz.
    rewrite H. apply b. apply Cancel. apply t_T.
    apply cup_spec. split.
    rewrite Hxz. apply b_T. 
@@ -628,22 +628,22 @@ Section s.
  Lemma St x: exists tx, S tx /\ tx == t x.
  Proof. exists (t' x). split. apply St'. now rewrite tt'. Qed.
 
- Lemma Sflat s: S s -> exists T, T<=S /\ s == inf (image b T).
+ Lemma Sflat s: S s -> exists T, T<=S /\ s == inf' T b.
  Proof.
    induction 1 as [s Hs IH|T HT IH].
    exists (eq s). split. now intros ? <-.
-   apply antisym. apply inf_spec. apply forall_image. now intros ? <-.
-   apply leq_infx. now exists s. 
+   apply antisym. apply inf_spec. now intros ? <-.
+   eapply eleq_infx; eauto.
    (* exists (fun t => exists a (A: T a), match IH a A return Prop with ex_intro _ U _ => U t end). *)
  Abort.
  
- Lemma Sflat s: S s -> s == inf (image b (fun t => S t /\ s <= b t)).
+ Lemma Sflat s: S s -> s == inf' (fun t => S t /\ s <= b t) b.
  Proof.
-   intro E. apply antisym. now apply inf_spec, forall_image; intros t [_ T].
+   intro E. apply antisym. now apply inf_spec; intros t [_ T].
    induction E as [s Hs IH|T HT IH].
-   apply leq_infx. now exists s. 
+   eapply eleq_infx; eauto.
    apply inf_spec. intros s Hs.
-   rewrite <- (IH s Hs). apply inf_leq, image_leq. 
+   rewrite <- (IH s Hs). apply inf_leq; trivial. 
    intros t [St sbt]. split. assumption.
    rewrite <-sbt. now apply leq_infx.
  Qed.
@@ -664,8 +664,8 @@ Section s.
      set (T t := S t /\ y <= b t) in E. 
      assert (IH': forall y, T y -> x <= y \/ y <= x). intros t Tt. apply IH, Tt. 
      destruct (choose _ _ _ IH') as [[s [Ss sx]]|F].
-     right. rewrite E, <-sx. apply leq_infx. now exists s. 
-     left. rewrite E. apply inf_spec, forall_image; intros s Ts. now apply b, F.
+     right. rewrite E, <-sx. eapply eleq_infx; eauto.
+     left. rewrite E. apply inf_spec; intros s Ts. now apply b, F.
    - assert (IH': forall a, T a -> y <= a \/ a <= y). intros a A. specialize (IH _ A _ Sy). tauto. 
      destruct (choose _ _ _ IH') as [[s [Ss sx]]|F].
      left. rewrite <-sx. now apply leq_infx.

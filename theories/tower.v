@@ -66,7 +66,11 @@ Section s.
    - apply inf_closed_leq.
    - intros; now apply b.
  Qed.
-
+ 
+ (** [gfp] is below all elements of the chain (by definition) *)
+ Lemma gfp_chain: forall {s} {Cs: Chain s}, gfp <= s.
+ Proof. apply leq_infx. Qed.
+ 
  (** [gfp] is indeed a fixpoint  *)
  Theorem gfp_fp: b gfp == gfp.
  Proof. apply antisym. apply b_chain. apply gfp_pfp. Qed.
