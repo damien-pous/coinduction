@@ -10,16 +10,16 @@ Set Implicit Arguments.
 Class CompleteLattice (X: Type) := {
   weq: relation X;
   leq: relation X;
-  sup: forall I, (I -> Prop) -> (I -> X) -> X;
-  inf: forall I, (I -> Prop) -> (I -> X) -> X;
+  sup: (X -> Prop) -> X;
+  inf: (X -> Prop) -> X;
   cup: X -> X -> X;
   cap: X -> X -> X;
   bot: X;
   top: X;
   PreOrder_leq:> PreOrder leq;
   weq_spec: forall x y, weq x y <-> (leq x y /\ leq y x);
-  sup_spec: forall I P f z, leq (@sup I P f) z <-> forall i, P i -> leq (f i) z;
-  inf_spec: forall I P f z, leq z (@inf I P f) <-> forall i, P i -> leq z (f i);
+  sup_spec: forall P z, leq (sup P) z <-> forall x, P x -> leq x z;
+  inf_spec: forall P z, leq z (inf P) <-> forall x, P x -> leq z x;
   cup_spec: forall x y z, leq (cup x y) z <-> (leq x z /\ leq y z);
   cap_spec: forall x y z, leq z (cap x y) <-> (leq z x /\ leq z y);
   leq_bx: forall x, leq bot x;
@@ -29,8 +29,6 @@ Declare Scope lattice.
 Open Scope lattice.
 Infix "==" := weq (at level 70): lattice.
 Infix "<=" := leq: lattice.
-Notation sup_all f := (sup (fun _ => True) f).
-Notation inf_all f := (inf (fun _ => True) f).
 Global Hint Extern 0 => reflexivity: core.
 Global Hint Resolve leq_bx leq_xt: core.
  
@@ -41,8 +39,8 @@ Global Hint Resolve leq_bx leq_xt: core.
 #[export] Program Instance CompleteLattice_Prop: CompleteLattice Prop :=
   {| weq:=iff;
      leq:=Basics.impl;
-     sup I P f:=exists2 i, P i & f i;
-     inf I P f:=forall i, P i -> f i;
+     sup P:=exists2 p, P p & p;
+     inf P:=forall p, P p -> p;
      cup:=or;
      cap:=and;
      bot:=False;
@@ -59,11 +57,20 @@ Next Obligation. firstorder. Qed.
 Definition dpointwise_relation A (X: A -> Type) (R: forall {a}, relation (X a)): relation (forall a, X a)
   := fun f g => forall a, R (f a) (g a). 
 Arguments dpointwise_relation [_] {_} _ /.
+
+Definition image {A B} (f: A -> B) (P: A -> Prop): B -> Prop :=
+  fun b => exists2 a, P a & b = f a.
+Lemma in_image {A B} (f: A -> B) (P: A -> Prop) a: P a -> image f P (f a).
+Proof. now exists a. Qed.
+Lemma forall_image {A B} (f: A -> B) (P: A -> Prop) (Q: B -> Prop):
+  (forall b, image f P b -> Q b) <-> forall a, P a -> Q (f a).
+Proof. cbv; firstorder (subst; eauto). Qed.
+
 Program Definition CompleteLattice_dfun A (X: A -> Type) (L: forall a, CompleteLattice (X a)): CompleteLattice (forall a, X a) :=
   {| weq := dpointwise_relation (fun _ => weq);
      leq := dpointwise_relation (fun _ => leq);
-     sup I P f a := sup P (fun i => f i a);
-     inf I P f a := inf P (fun i => f i a);
+     sup P a := sup (image (fun f => f a) P);
+     inf P a := inf (image (fun f => f a) P);
      cup f g a := cup (f a) (g a);
      cap f g a := cap (f a) (g a);
      bot a := bot;
@@ -75,8 +82,8 @@ Next Obligation.
    intros f g h H H' x. now transitivity (g x).
 Qed.
 Next Obligation. setoid_rewrite weq_spec. firstorder. Qed.
-Next Obligation. setoid_rewrite sup_spec. firstorder. Qed.
-Next Obligation. setoid_rewrite inf_spec. firstorder. Qed.
+Next Obligation. setoid_rewrite sup_spec. setoid_rewrite forall_image. firstorder. Qed.
+Next Obligation. setoid_rewrite inf_spec. setoid_rewrite forall_image. firstorder. Qed.
 Next Obligation. setoid_rewrite cup_spec. firstorder. Qed.
 Next Obligation. setoid_rewrite cap_spec. firstorder. Qed.
 
@@ -120,6 +127,14 @@ Proof.
   apply weq_spec. split; apply Hf; (apply E || apply E').
 Qed.
 
+#[export] Instance image_leq {A B} {f: A -> B}: Proper (leq ==> leq) (image f).
+Proof. intros P Q PQ b [? ? ?]. eexists; eauto. now apply PQ. Qed.
+#[export] Instance image_weq {A B} {f: A -> B}: Proper (weq ==> weq) (image f) := op_leq_weq_1.
+Lemma image_id {A} (P: A -> Prop): image id P == P. 
+Proof. firstorder (subst; eauto). Qed.
+Lemma image_comp {A B C} (f: A -> B) (g: B -> C) (P: A -> Prop): image (fun x => g (f x)) P == image g (image f P).
+Proof. firstorder (subst; eauto). Qed.
+
 (** * General properties of complete lattices *)
 
 Section sup.
@@ -151,34 +166,27 @@ Section sup.
 
  
  (** Least upper bounds *)
- Global Instance sup_leq I:
-   Proper (leq ==> leq ==> leq) (sup (I:=I)).
+ Global Instance sup_leq:
+   Proper (leq ==> leq) sup.
  Proof.
-   intros P P' HP f f' Hf. apply sup_spec.
-   intro i. rewrite (HP i), (Hf i). 
-   now apply sup_spec.
+   intros P P' HP. apply sup_spec. 
+   intro x. rewrite (HP x). now apply sup_spec.
  Qed.
- Global Instance sup_weq I: Proper (weq ==> weq ==> weq) (sup (I:=I)) := op_leq_weq_2.
+ Global Instance sup_weq: Proper (weq ==> weq) sup := op_leq_weq_1.
  
- Lemma leq_xsup I (P: I -> Prop) (f: I -> X) i: P i -> f i <= sup P f.
+ Lemma leq_xsup (P: X -> Prop) x: P x -> x <= sup P.
  Proof. now apply sup_spec. Qed.
- Lemma leq_xsup_id (P: X -> Prop) x: P x -> x <= sup P id.
- Proof. apply (leq_xsup P id). Qed.
- Lemma leq_xsup_all I (f: I -> X) i: f i <= sup_all f.
- Proof. now apply leq_xsup. Qed.
 
- Lemma eleq_xsup I (P: I -> Prop) (f: I -> X) i x: P i -> x <= f i -> x <= sup P f.
+ Lemma eleq_xsup (P: X -> Prop) y x: P y -> x <= y -> x <= sup P.
  Proof. intros ? H. rewrite H. now apply leq_xsup. Qed.
- Lemma eleq_xsup_id (P: X -> Prop) y x: P y -> x <= y -> x <= sup P id.
- Proof. apply (eleq_xsup P id). Qed.
- Lemma eleq_xsup_all I (f: I -> X) i x: x <= f i -> x <= sup_all f.
- Proof. now apply eleq_xsup. Qed.
 
- Lemma sup_id_spec P z: sup P id <= z <-> forall y, P y -> y <= z.
- Proof. now rewrite sup_spec. Qed.
- Lemma sup_all_spec I (f: I -> X) z: sup_all f <= z <-> forall i, f i <= z.
- Proof. rewrite sup_spec. firstorder. Qed.
-
+ Lemma sup_bot: sup bot == bot.
+ Proof. apply antisym. now apply sup_spec. apply leq_bx. Qed.
+ Lemma sup_single x: sup (eq x) == x.
+ Proof. apply antisym. apply sup_spec. now intros ? <-. now apply leq_xsup. Qed.
+ Lemma sup_top: sup top == top.
+ Proof. apply antisym. apply leq_xt. now apply leq_xsup. Qed.
+ 
  
  (** Binary join *)
  Lemma leq_xcup x y z: z <= x \/ z <= y -> z <= cup x y.
@@ -213,9 +221,20 @@ Section sup.
    now apply cup_spec.
  Qed.
  Global Instance cup_weq: Proper (weq ==> weq ==> weq) cup := op_leq_weq_2.
-
+ 
 End sup.
 Global Hint Resolve cup_l cup_r: core.
+
+Section sup_cup.
+ Context {X} {L: CompleteLattice X}.
+ Lemma sup_cup P Q: sup (cup P Q) == cup (sup P) (sup Q).
+ Proof.
+   apply antisym. apply sup_spec. intros i [H|H]; apply leq_xcup.
+   now left; apply leq_xsup. 
+   now right; apply leq_xsup.
+   apply cup_spec. now split; apply sup_leq. 
+ Qed.
+End sup_cup. 
 
 
 (** * Properties obtained by duality *)
@@ -223,28 +242,24 @@ Section inf.
  Context {X} {L: CompleteLattice X}.
 
  (** Greatest lower bounds *)
- Global Instance inf_leq I:
-   Proper (leq --> leq ==> leq) (inf (I:=I)).
- Proof. intros ??????. now dual @sup_leq. Qed.
- Global Instance inf_weq I: Proper (weq ==> weq ==> weq) (inf (I:=I)).
+ Global Instance inf_leq: Proper (leq --> leq) inf.
+ Proof. intros ???. now dual @sup_leq. Qed.
+ Global Instance inf_weq: Proper (weq ==> weq) inf.
  Proof. apply (@sup_weq _ (@Dual _ L)). Qed.
  
- Lemma leq_infx I (P: I -> Prop) (f: I -> X) i: P i -> inf P f <= f i.
+ Lemma leq_infx (P: X -> Prop) x: P x -> inf P <= x.
  Proof. dual @leq_xsup. Qed.
- Lemma leq_infx_id (P: X -> Prop) x: P x -> inf P id <= x.
- Proof. dual @leq_xsup_id. Qed.
- Lemma leq_infx_all I (f: I -> X) i: inf_all f <= f i.
- Proof. dual @leq_xsup_all. Qed.
- Lemma eleq_infx I (P: I -> Prop) (f: I -> X) i x: P i -> f i <= x -> inf P f <= x.
+ Lemma eleq_infx (P: X -> Prop) y x: P y -> y <= x -> inf P <= x.
  Proof. dual @eleq_xsup. Qed.
- Lemma eleq_infx_id (P: X -> Prop) y x: P y -> y <= x -> inf P id <= x.
- Proof. dual @eleq_xsup_id. Qed.
- Lemma eleq_infx_all I (f: I -> X) i x: f i <= x -> inf_all f <= x.
- Proof. dual @eleq_xsup_all. Qed.
- Lemma inf_id_spec P z: z <= inf P id <-> forall y, P y -> z <= y.
- Proof. dual @sup_id_spec. Qed.
- Lemma inf_all_spec I (f: I -> X) z: z <= inf_all f <-> forall i, z <= f i.
- Proof. dual @sup_all_spec. Qed.
+
+ Lemma inf_bot: inf bot == top.
+ Proof. dual @sup_bot. Qed.
+ Lemma inf_single x: inf (eq x) == x.
+ Proof. dual @sup_single. Qed.
+ Lemma inf_cup P Q: inf (cup P Q) == cap (inf P) (inf Q).
+ Proof. dual @sup_cup. Qed.
+ Lemma inf_top: inf top == bot.
+ Proof. dual @sup_top. Qed.
 
  (** Binary meet *)
  Lemma leq_capx x y z: x <= z \/ y <= z -> cap x y <= z.
@@ -314,27 +329,33 @@ Section mon.
  Global Program Instance CompleteLattice_mon: CompleteLattice mon := {|
    weq := pointwise_relation X weq;
    leq := pointwise_relation X leq;
-   sup I P f := {| body := fun x => sup P (fun i => f i x) |};
-   inf I P f := {| body := fun x => inf P (fun i => f i x) |};
+   sup P := {| body := fun x => sup (image (fun f: mon => f x) P) |};
+   inf P := {| body := fun x => inf (image (fun f: mon => f x) P) |};
    cup f g := {| body := fun x => cup (f x) (g x) |};
    cap f g := {| body := fun x => cap (f x) (g x) |};
    bot := const bot;
    top := const top
  |}.
  Next Obligation.
-   intros x y H. apply sup_spec. intros i Hi.
-   rewrite H. eapply eleq_xsup; eauto.
+   intros x y H. apply sup_spec. apply forall_image. intros f Pf.
+   rewrite H. apply leq_xsup. now exists f. 
  Qed.
  Next Obligation.
-   intros x y H. apply inf_spec. intros i Hi.
-   rewrite <-H. eapply eleq_infx; eauto.
+   intros x y H. apply inf_spec. apply forall_image. intros f Pf.
+   rewrite <-H. apply leq_infx. now exists f. 
  Qed.
  Next Obligation. intros x y H. now rewrite H. Qed.
  Next Obligation. intros x y H. now rewrite H. Qed.
  Next Obligation. constructor. now intros f x. intros f g h H H' x. now transitivity (g x). Qed.
  Next Obligation. unfold pointwise_relation. setoid_rewrite weq_spec. firstorder. Qed.
- Next Obligation. unfold pointwise_relation. setoid_rewrite sup_spec. firstorder. Qed.
- Next Obligation. unfold pointwise_relation. setoid_rewrite inf_spec. firstorder. Qed.
+ Next Obligation.
+   unfold pointwise_relation. setoid_rewrite sup_spec.
+   setoid_rewrite forall_image. firstorder.
+ Qed.
+ Next Obligation.
+   unfold pointwise_relation. setoid_rewrite inf_spec.
+   setoid_rewrite forall_image. firstorder.
+ Qed.
  Next Obligation. unfold pointwise_relation. setoid_rewrite cup_spec. firstorder. Qed.
  Next Obligation. unfold pointwise_relation. setoid_rewrite cap_spec. firstorder. Qed.
  Next Obligation. intro. apply leq_bx. Qed.
@@ -344,6 +365,7 @@ Section mon.
  Proof. intros f f' Hf g g' Hg x. simpl. rewrite (Hg x). apply Hf. Qed.
  Global Instance comp_weq: Proper (weq ==> weq ==> weq) comp := op_leq_weq_2.
 
+ (** trivial properties of composition *)
  Lemma compA f g h: f ° (g ° h) = (f ° g) ° h.
  Proof. reflexivity. Qed.
  Lemma compIx f: id ° f = f.
@@ -351,14 +373,20 @@ Section mon.
  Lemma compxI f: f ° id = f.
  Proof. now case f. Qed. 
 
+ (** monotone functions applied to infs/sups *)
+ Lemma mon_sup (f: mon) P: sup (image f P) <= f (sup P).
+ Proof. apply sup_spec. apply forall_image. intros. apply f. now apply leq_xsup. Qed.
+ Lemma mon_cup (f: mon) x y: cup (f x) (f y) <= f (cup x y).
+ Proof. apply cup_spec; split; apply f; auto. Qed.
+ Lemma mon_inf (f: mon) P: f (inf P) <= inf (image f P).
+ Proof. apply inf_spec. apply forall_image. intros. apply f. now apply leq_infx. Qed.
+ Lemma mon_cap (f: mon) x y: f (cap x y) <= cap (f x) (f y).
+ Proof. apply cap_spec; split; apply f; auto. Qed.
+
  (** operations on [mon X] behave as expected on the left of compositions *)
- Lemma msup_o I f P h: sup P f ° h == sup P (fun i: I => (f i) ° h).
- Proof. now intro. Qed.
  Lemma mcup_o f g h: (cup f g) ° h == cup (f ° h) (g ° h).
  Proof. now intro. Qed.
  Lemma mbot_o f: bot ° f == bot.
- Proof. now intro. Qed.
- Lemma minf_o I f P h: inf P f ° h == inf P (fun i: I => (f i) ° h).
  Proof. now intro. Qed.
  Lemma mcap_o f g h: (cap f g) ° h == cap (f ° h) (g ° h).
  Proof. now intro. Qed. 
@@ -366,14 +394,14 @@ Section mon.
  Proof. now intro. Qed.
 
  (** instead, only one inclusion holds in general when they are on the left *)
- Lemma o_msup I f P h: sup P (fun i: I => h ° (f i)) <= h ° sup P f.
- Proof. intro. apply sup_spec. intros. apply h. eapply eleq_xsup; eauto. Qed.
- Lemma o_mcup f g h: cup (h ° f) (h ° g) <= h ° (cup f g).
- Proof. intro. apply cup_spec. split; apply h; now simpl. Qed.
- Lemma o_minf I f P h: h ° inf P f <= inf P (fun i: I => h ° (f i)).
- Proof. intro. apply inf_spec. intros. apply h. eapply eleq_infx; eauto. Qed.
- Lemma o_mcap f g h: h ° (cap f g) <= cap (h ° f) (h ° g).
- Proof. intro. apply cap_spec. split; apply h; now simpl. Qed.
+ Lemma o_msup (P: mon -> Prop) (h: mon): sup (image (fun f => h ° f) P) <= h ° sup P.
+ Proof. intro. setoid_rewrite <-mon_sup. apply sup_leq. now rewrite <-2image_comp. Qed.
+ Lemma o_mcup h f g: cup (h ° f) (h ° g) <= h ° (cup f g).
+ Proof. intro. apply (mon_cup h). Qed.
+ Lemma o_minf (P: mon -> Prop) (h: mon): h ° inf P <= inf (image (fun f => h ° f) P).
+ Proof. intro. setoid_rewrite mon_inf. apply inf_leq. now rewrite <-2image_comp. Qed.
+ Lemma o_mcap h f g: h ° (cap f g) <= cap (h ° f) (h ° g).
+ Proof. intro. apply (mon_cap h). Qed.
 
 End mon.
 Arguments mon X {L}.

@@ -39,17 +39,17 @@ Section s1.
  Lemma compat_const y: y <= b y -> compat (const y).
  Proof. now intros ??. Qed. 
  
- Lemma compat_sup I (P: I -> Prop) (f: I -> mon X):
-   (forall i, P i -> compat (f i)) -> compat (sup P f).
+ Lemma compat_sup (P: mon X -> Prop):
+   (forall f, P f -> compat f) -> compat (sup P).
  Proof.
-   intros H x. simpl. apply sup_spec. intros i Hi.
-   rewrite (H _ Hi x). apply b. eapply eleq_xsup; eauto. 
+   intros H x. simpl. apply sup_spec. apply forall_image.
+   intros f Hf. rewrite (H _ Hf x). apply b. apply leq_xsup. now exists f. 
  Qed.
 
  (** ** companion *)
 
  (** the companion is the largest compatible function *)
- Definition t := sup (fun f => compat f) id.
+ Definition t := sup (fun f => compat f).
 
  Lemma compat_t: compat t.
  Proof. now apply compat_sup. Qed.
@@ -71,7 +71,7 @@ Section s1.
  Proposition leq_gfp y: y <= b y -> y <= gfp.
  Proof.
    intro H.
-   assert (H': const y <= t) by now apply leq_xsup_id, compat_const.
+   assert (H': const y <= t) by now apply leq_xsup, compat_const.
    apply (H' bot).
  Qed.
 
@@ -84,7 +84,7 @@ Section s1.
 
  (** more properties about [t] (Lemma 3.2) *)
  Lemma leq_t f: compat f -> f <= t.
- Proof. intro; now apply leq_xsup_id. Qed.
+ Proof. intro; now apply leq_xsup. Qed.
  
  Lemma id_t: id <= t.
  Proof. apply leq_t, compat_id. Qed.
@@ -178,17 +178,18 @@ Section s3.
  
  (** a function whose post-fixpoints are the compatible functions (Definition 6.1) *)
  Program Definition B: mon (mon X) :=
-   {| body g := sup (fun f => f ° b <= b ° g) id |}.
+   {| body g := sup (fun f => f ° b <= b ° g) |}.
  Next Obligation.
-   intros g g' Hg x. apply sup_leq. 2: reflexivity.
+   intros g g' Hg x. apply sup_leq. apply image_leq. 
    intros f Hf z. now rewrite <-(Hg z).
  Qed.
 
  (** Lemma 6.2 *)
  Lemma B_spec f g: f <= B g <-> f ° b <= b ° g.
  Proof.
-   split; intro H. rewrite H. intro. apply sup_spec. intros h Hh. apply Hh.
-   now apply leq_xsup_id.
+   split; intro H. rewrite H. intro. apply sup_spec. apply forall_image.
+   intros h Hh. apply Hh.
+   now apply leq_xsup.
  Qed.
  Lemma Bfb f: B f ° b <= b ° f.
  Proof. now apply B_spec. Qed.
@@ -301,20 +302,19 @@ Section s3.
  (** * Parametric coinduction: the accumulation rule  *)
  
  Program Definition xaccumulate y x: mon X :=
-   {| body z := sup (fun _:unit => x <= z) (fun _:unit => y) |}.
+   {| body z := sup (image (fun _:unit => y) (fun _:unit => x <= z)) |}.
  Next Obligation.
-   intros z z' Hz. apply sup_leq.
+   intros z z' Hz. apply sup_leq, image_leq.
    intros _ H. now rewrite H.
-   reflexivity.
  Qed.
 
  (** Theorem 10.2 *)
  Theorem accumulate y x: y <= bt (cup x y) -> y <= t x.
  Proof.
    intro H. set (f:=xaccumulate y x).
-   assert (E: y <= f x) by now apply eleq_xsup with tt.
+   assert (E: y <= f x) by now apply leq_xsup; exists tt. 
    cut (f <= t). intro F. now rewrite E.
-   apply Coinduction. intro z. apply sup_spec. intros _ Hxz.
+   apply Coinduction. intro z. apply sup_spec, forall_image. intros _ Hxz.
    rewrite H. apply b. apply Cancel. apply t_T.
    apply cup_spec. split.
    rewrite Hxz. apply b_T. 
@@ -575,25 +575,25 @@ Section s.
  Notation t := (t b).
  Inductive S: X -> Prop :=
  | Sb: forall x, S x -> S (b x)
- | Sinf: forall T, T <= S -> S (inf T id).
- Lemma gfpS: gfp b == inf S id.
+ | Sinf: forall T, T <= S -> S (inf T).
+ Lemma gfpS: gfp b == inf S.
  Proof.
    apply antisym. apply inf_spec. simpl. intros u U. induction U.
    rewrite gfp_pfp. now apply b. now apply inf_spec.
-   apply leq_gfp. apply leq_infx_id. now apply Sb, Sinf.
+   apply leq_gfp. apply leq_infx. now apply Sb, Sinf.
  Qed.
  Lemma tS: forall s, S s -> t s == s.
  Proof.
    intros s H. apply antisym. 2: apply id_t.
    induction H as [s Hs IH|T HT IH].
    rewrite (compat_t b s). now apply b.
-   apply inf_spec. intros s Hs. rewrite <-(IH _ Hs). apply t. now apply leq_infx_id.
+   apply inf_spec. intros s Hs. rewrite <-(IH _ Hs). apply t. now apply leq_infx.
  Qed.               
  Definition S_ x s := S s /\ x <= s.
- Definition t'_ x := inf (S_ x) id.
+ Definition t'_ x := inf (S_ x).
  Lemma t'_mon: Proper (leq ==> leq) t'_.
  Proof.
-   intros x y H. apply inf_spec; intros s [Ss E]. apply leq_infx_id.
+   intros x y H. apply inf_spec; intros s [Ss E]. apply leq_infx.
    split. assumption. now rewrite H. 
  Qed.
  Definition t' := Build_mon t'_mon. 
@@ -603,7 +603,7 @@ Section s.
  Proof. apply Sinf. now intros ? [? ?]. Qed.
  Lemma compat_t': t' ° b <= b ° t'.
  Proof.
-   intro x. simpl. apply leq_infx_id. split.
+   intro x. simpl. apply leq_infx. split.
    apply Sb. apply St'. apply b. apply id_t'. 
  Qed.
  
@@ -628,23 +628,24 @@ Section s.
  Lemma St x: exists tx, S tx /\ tx == t x.
  Proof. exists (t' x). split. apply St'. now rewrite tt'. Qed.
 
- Lemma Sflat s: S s -> exists T, T<=S /\ s == inf T b.
+ Lemma Sflat s: S s -> exists T, T<=S /\ s == inf (image b T).
  Proof.
    induction 1 as [s Hs IH|T HT IH].
    exists (eq s). split. now intros ? <-.
-   apply antisym. apply inf_spec. now intros ? <-. now apply leq_infx.
+   apply antisym. apply inf_spec. apply forall_image. now intros ? <-.
+   apply leq_infx. now exists s. 
    (* exists (fun t => exists a (A: T a), match IH a A return Prop with ex_intro _ U _ => U t end). *)
  Abort.
  
- Lemma Sflat s: S s -> s == inf (fun t => S t /\ s <= b t) b.
+ Lemma Sflat s: S s -> s == inf (image b (fun t => S t /\ s <= b t)).
  Proof.
-   intro E. apply antisym. now apply inf_spec; intros t [_ T].
+   intro E. apply antisym. now apply inf_spec, forall_image; intros t [_ T].
    induction E as [s Hs IH|T HT IH].
-   apply leq_infx. now split.
+   apply leq_infx. now exists s. 
    apply inf_spec. intros s Hs.
-   rewrite <- (IH s Hs). apply inf_leq. 2: reflexivity.
+   rewrite <- (IH s Hs). apply inf_leq, image_leq. 
    intros t [St sbt]. split. assumption.
-   rewrite <-sbt. now apply leq_infx_id.
+   rewrite <-sbt. now apply leq_infx.
  Qed.
 
  (** * additivity of the companion (assuming classical logic) *)
@@ -663,11 +664,11 @@ Section s.
      set (T t := S t /\ y <= b t) in E. 
      assert (IH': forall y, T y -> x <= y \/ y <= x). intros t Tt. apply IH, Tt. 
      destruct (choose _ _ _ IH') as [[s [Ss sx]]|F].
-     right. rewrite E, <-sx. now apply leq_infx.
-     left. rewrite E. apply inf_spec; intros s Ts. now apply b, F.
+     right. rewrite E, <-sx. apply leq_infx. now exists s. 
+     left. rewrite E. apply inf_spec, forall_image; intros s Ts. now apply b, F.
    - assert (IH': forall a, T a -> y <= a \/ a <= y). intros a A. specialize (IH _ A _ Sy). tauto. 
      destruct (choose _ _ _ IH') as [[s [Ss sx]]|F].
-     left. rewrite <-sx. now apply leq_infx_id.
+     left. rewrite <-sx. now apply leq_infx.
      right. apply inf_spec; intros t Tt. now apply F. 
  Qed.
 
