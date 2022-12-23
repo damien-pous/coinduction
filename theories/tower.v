@@ -39,15 +39,19 @@ Section s.
  | Cb: forall x, C x -> C (b x)
  | Cinf: forall T, T <= C -> C (inf T).
 
- (** declaring the chain as a typeclass so that membership can be inferred automatically *)
- Class Chain x := chain: C x.
- #[export] Instance chain_b {x} {Cx: Chain x}: Chain (b x) := Cb Cx.
+ (** a type for the elements of the chain *)
+ Structure Chain := chain { elem:> X; #[canonical=no] Celem: C elem}.
+
+ (** the chain is closed under [b] *)
+ Canonical Structure chain_b (x: Chain) := {| elem := b x; Celem := Cb (Celem x) |}.
 
  (** ** the greatest fixpoint is the least element of the final chain *)
  Definition gfp := inf C.
 
- #[export] Instance chain_gfp: Chain gfp.
- Proof. now apply Cinf. Qed.
+ (** the gfp belongs to the chain *)
+ Canonical Structure chain_gfp := {| elem := gfp; Celem := Cinf (reflexivity C) |}. 
+ Corollary gfp_prop (P: X -> Prop): (forall x: Chain, P x) -> P gfp.
+ Proof. now intro. Qed.
 
  Lemma gfp_pfp: gfp <= b gfp.
  Proof. apply leq_infx, chain_b. Qed.
@@ -55,21 +59,34 @@ Section s.
  (** tower induction principle (just a rephrasing of induction on the Chain predicate *)
  Proposition tower (P: X -> Prop):
    inf_closed P ->
-   (forall x, Chain x -> P x -> P (b x)) ->
-   (forall x, Chain x -> P x).
- Proof. intros Pinf Pb. induction 1; auto. Qed.
+   (forall x, C x -> P x -> P (b x)) ->
+   (forall x, C x -> P x).
+ Proof.
+   intros Pinf Pb x Cx; cbn.
+   induction Cx; auto.
+ Qed.
+ Proposition tower' (P: X -> Prop):
+   inf_closed P ->
+   (forall x: Chain, P x -> P (b x)) ->
+   (forall x: Chain, P x).
+ Proof.
+   intros Hinf Hb x. apply tower; trivial.
+   intros y Cy; apply (Hb (chain Cy)).
+   apply x. 
+ Qed.
 
  (** elements of the chain are closed under [b] *)
- Lemma b_chain: forall {s} {Cs: Chain s}, b s <= s.
+ Lemma b_chain (x: Chain): b x <= x.
  Proof.
-   apply tower. 
+   apply (tower (P:=fun x => b x <= x)). 
    - apply inf_closed_leq.
    - intros; now apply b.
+   - apply x.
  Qed.
  
  (** [gfp] is below all elements of the chain (by definition) *)
- Lemma gfp_chain: forall {s} {Cs: Chain s}, gfp <= s.
- Proof. apply leq_infx. Qed.
+ Lemma gfp_chain (x: Chain): gfp <= x.
+ Proof. apply leq_infx, x. Qed.
  
  (** [gfp] is indeed a fixpoint  *)
  Theorem gfp_fp: b gfp == gfp.
@@ -78,7 +95,7 @@ Section s.
  (** and indeed the largest (post)-fixpoint *)
  Theorem gfp_gfp x: x <= b x -> x <= gfp.
  Proof.
-   intro H. apply inf_spec. apply tower.
+   intro H. apply inf_spec. apply tower. 
    - apply (inf_closed_leq (const x)).
    - intros y Cy xy. now rewrite H, xy. 
  Qed.
@@ -87,20 +104,20 @@ Section s.
  Proposition ptower (Q P: X -> Prop):
    Proper (leq ==> leq) Q ->
    inf_closed P ->
-   (forall x, Chain x -> Q x -> P x -> P (b x)) ->
-   (forall x, Chain x -> Q x -> P x).
+   (forall x: Chain, Q x -> P x -> P (b x)) ->
+   (forall x: Chain, Q x -> P x).
  Proof.
-   intros Qleq Pinf Pb. refine (tower _ _).
+   intros Qleq Pinf Pb. apply (tower' (P:= fun x => Q x -> P x)). 
    - now apply inf_closed_impl.
-   - intros x Cx I H. cut (Q x); auto. now rewrite <-b_chain. 
+   - intros x I H. cut (Q x); auto. now rewrite <-b_chain. 
  Qed.
 
  Definition compat f := f ° b <= b ° f.
- Lemma compat_chain {s} {Cs: Chain s}: forall f, compat f -> f s <= s.
+ Lemma compat_chain (x: Chain): forall f, compat f -> f x <= x.
  Proof.
-   intros f Hf. revert s Cs. apply tower.
+   intros f Hf. revert x. apply (tower' (P:=fun x => f x <= x)).
    - apply inf_closed_leq. 
-   - intros x Cx fx. rewrite (Hf x). now apply b. 
+   - intros x fx. rewrite (Hf x). now apply b. 
  Qed.
  
 End s.
@@ -128,13 +145,13 @@ Section symmetry.
  Qed.
 
  (** thus fixes all elements in the chain *)
- Lemma invol_chain {x} {Cx: Chain b x}: i x == x.
+ Lemma invol_chain (x: Chain b): i (elem x) == elem x.
  Proof. apply invol_fixed, compat_chain, invol_compat. Qed.
 
  (** whence a simpler definition of [b] on the chain *)
- Lemma symmetrical_chain {x} {Cx: Chain b x}: b x == cap (s x) (i (s x)).
+ Lemma symmetrical_chain {x: Chain b}: b (elem x) == cap (s (elem x)) (i (s (elem x))).
  Proof.
-   rewrite symmetrical. apply cap_weq; trivial.
+   rewrite (symmetrical (elem x)). apply cap_weq; trivial.
    cbn. now rewrite invol_chain.
  Qed.
 

@@ -15,8 +15,6 @@ open Reification
 }
 
 TACTIC EXTEND coinduction_reify
-| [ "apply_coinduction" ] -> { Goal.enter (apply `Coinduction) }
-| [ "apply_by_symmetry" ] -> { Goal.enter (apply `By_symmetry) }
-| [ "apply_accumulate" constr(i) ident(r) ] -> { Goal.enter (apply (`Accumulate(i,r))) }
-| [ "find_candidate" ] -> { Goal.enter find_candidate }
+| [ "apply_by_symmetry" ident(r) ] -> { Goal.enter (apply r `By_symmetry) }
+| [ "apply_ptower" ident(r) constr(n) ] -> { Goal.enter (apply r (`PTower(n))) }
 END

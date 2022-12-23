@@ -205,18 +205,16 @@ Module reification.
    rewrite <-eT. apply HT, TR.
  Qed.
    
- (** reformulation of the enhanced coinduction lemma using reified terms
-     this is the lemma which is applied in tactic [coinduction]
-  *)
- (* Proposition coinduction A c (b: mon (REL A)) (x: fT A c): *)
- (*     (forall R, pT (t b R) x -> pT (bt b R) x) -> pT (gfp b) x. *)
- Proposition coinduction A c (b: mon (REL A)) (x: fT A c):
-     (forall R, Chain b R -> pT R x -> pT (b R) x) -> 
+ (** reformulation of the tower induction lemma using reified terms
+     for the tactic [coinduction]
+     not used in practice, it is subsumed by Proposition [ptower] below *)
+ Proposition tower A c (b: mon (REL A)) (x: fT A c):
+     (forall R: Chain b, pT `R x -> pT (b `R) x) -> 
      (pT (gfp b) x).
  Proof.
    intro H.
-   cut (forall R, Chain b R -> pT R x). intros E. apply E. apply chain_gfp.
-   apply tower. apply inf_closed_pT. apply H.
+   cut (forall R: Chain b, pT `R x). intros E. apply E. 
+   apply (tower' (inf_closed_pT _ _ x)). apply H.
  Qed.
 
  (* idea: the above lemma can be used as follows: *)
@@ -282,18 +280,17 @@ Module reification.
      rewrite IHcs. simpl merge. now rewrite cupA, (cupC (rT _)), <-cupA.
  Qed.
 
- (** reformulation of the accumulation lemma using reified terms
-     this is the lemma which is applied in tactic [accumulate]
-  *)
- Proposition accumulate A (b: mon (REL A)) cs c (x: fT A c):
-     (forall R, Chain b R -> pTs (tsnoc cs x) R (pT (b R) x)) ->
-     (forall R, Chain b R -> pTs cs R (pT R x)).
+ (** reformulation of the relativised tower induction lemma using reified terms
+     this is the lemma which is applied in tactic [accumulate] *)
+ Proposition ptower A (b: mon (REL A)) cs c (x: fT A c):
+     (forall R: Chain b, pTs (tsnoc cs x) `R (pT (b `R) x)) ->
+     (forall R: Chain b, pTs cs `R (pT `R x)).
  Proof.
    setoid_rewrite eTs.
    setoid_rewrite merge_tsnoc.
    intro H.
-   apply ptower. typeclasses eauto. apply inf_closed_pT.
-   intros R CR HR Hyps. apply H; trivial.
+   refine (ptower _ (inf_closed_pT _ _ _) _). 
+   intros R HR Hyps. apply H; trivial.
    cbn; apply cup_spec. now rewrite <-eT.
  Qed.
 
@@ -329,12 +326,12 @@ Module reification.
    (** reformulation of the symmetry lemma using reified terms
        this is the lemma which is applied in tactic [symmetric]
     *)
-   Lemma by_symmetry c (x: fT A2 c) {b s: mon (A -> A -> Prop)} {S: Symmetrical converse b s} R (CR: Chain b R):
+   Lemma by_symmetry c (x: fT A2 c) {b s: mon (A -> A -> Prop)} {S: Symmetrical converse b s} (R: Chain b):
      (* alternative to the hypothesis below: *)
      (* (forall i j, rT x j i -> rT x i j) -> *)
      (forall R, @pT A2 c R x -> @pT A2 c R (converse_fT x)) ->
-     @pT A2 c (s R) x ->
-     @pT A2 c (b R) x.
+     @pT A2 c (s `R) x ->
+     @pT A2 c (b `R) x.
    Proof.
      rewrite 2!eT. intros C H. rewrite symmetrical_chain.
      apply cap_spec. split; trivial.
@@ -349,6 +346,8 @@ End reification.
 
 (** registering constants required in the OCaml plugin  *)
 Register body                    as coinduction.body.
+Register elem                    as coinduction.elem.
+Register Chain                   as coinduction.Chain.
 Register gfp                     as coinduction.gfp.
 Register Symmetrical             as coinduction.Symmetrical.
 Register PRP                     as coinduction.PRP.
@@ -361,8 +360,7 @@ Register reification.fT          as coinduction.fT.
 Register reification.pT          as coinduction.pT.
 Register reification.tnil        as coinduction.tnil.
 Register reification.tcons       as coinduction.tcons.
-Register reification.coinduction as coinduction.coinduction.
-Register reification.accumulate  as coinduction.accumulate.
+Register reification.ptower      as coinduction.ptower.
 Register reification.by_symmetry as coinduction.by_symmetry.
 
 (** loading the OCaml plugin  *)
@@ -396,8 +394,8 @@ Declare ML Module "coq-coinduction.plugin".
     - to `change' the new goal to get rid of the reified operations and get back to a goal resembling the initial one
     (The last step could be implemented with [simpl reification.pT], but this would result in unwanted additional simplifications, and this resets names of bound variables in a very bad way. This is why we spend time in OCaml to reconstruct a type for the new goal by following syntactically the initial one.)
   *)
-Tactic Notation "coinduction" simple_intropattern(R) simple_intropattern(H) :=
-  apply_coinduction; intros R H.
+Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
+  apply gfp_prop; intro R; apply_ptower R O; intros H.
 
 (** ** accumulating knowledge in a proof by enhanced coinduction *)
 
@@ -433,19 +431,20 @@ Tactic Notation "coinduction" simple_intropattern(R) simple_intropattern(H) :=
     - then we move the hypotheses back to the context,
     - and we introduce the new hypothesis
   *)
-Ltac xaccumulate n R :=
+Ltac xaccumulate R n :=
   lazymatch goal with
-  | H: context[R] |- _ => revert H; xaccumulate (S n) R; intro H
-  | _ => apply_accumulate n R
+  | H: context[R] |- _ => revert H; xaccumulate R (S n); intro H
+  | _ => apply_ptower R n
   end.
+
+Tactic Notation "accumulate" hyp(R) simple_intropattern(H) :=
+  xaccumulate R O; intros H; simpl REL in *.
 
 Tactic Notation "accumulate" simple_intropattern(H) :=
-  find_candidate;
-  match goal with
-    (* TODO: use something more robust *)
-    |- ?R = _ -> _ => intros _; xaccumulate O R; intros H; simpl REL in *
+  lazymatch goal with
+  | R: Chain _ |- _ => accumulate R H
+  | _ => fail "could not find the coinductive candidate"
   end.
-
 
 (** reasoning on symmetric candidates with symmetric functions *)
 (** this tactic makes it possible to play only half of the coinductive game in cases where both the game and the current goal are symmetric:
@@ -458,10 +457,21 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
     ([t] is the companion, [b] the function for the coinductive game, [s] the function for the `half of [b]'; conjunctions are also allowed, like in the other tactics)
  *)
 (** as above, we use the OCaml defined tactic [apply_by_symmetry] in order to apply the lemma [reification.by_symmetry] and set the resulting goal back into a user-friendly shape *)
+Ltac default_sym_tac := solve[clear;firstorder]||fail "could not get symmetry automatically".
+Tactic Notation "symmetric" hyp(R) "using" tactic(tac) :=
+  apply_by_symmetry R; [simpl reification.pT; tac|].
+Tactic Notation "symmetric" hyp(R) :=
+  symmetric R using default_sym_tac.
 Tactic Notation "symmetric" "using" tactic(tac) :=
-  apply_by_symmetry; [simpl reification.pT; tac|].
+  lazymatch goal with
+  | R: Chain _ |- _ => symmetric R using tac
+  | _ => fail "could not find the coinductive candidate"
+  end.
 Tactic Notation "symmetric" :=
-  symmetric using (solve[clear;firstorder]||fail "could not get symmetry automatically").
+  lazymatch goal with
+  | R: Chain _ |- _ => symmetric R
+  | _ => fail "could not find the coinductive candidate"
+  end.
 
 (* old symmetry-solving tactic *)
 (*

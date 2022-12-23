@@ -2,21 +2,19 @@
 (** * tests for the exported tactics *)
 
 Require Import tower rel tactics.
-
+    
 Section s.
 
   (** on binary relations on natural numbers *)
   Variables b c s: mon (nat -> nat -> Prop).
   Infix "~" := (gfp b) (at level 80).
-  (* Notation "x ≡[ R ] y" := (t b R x y) (at level 80).  *)
-  (* Notation "x ≡ y" := (t b _ x y) (at level 80).  *)
-  (* Notation "x [≡] y" := (bt b _ x y) (at level 80). *)
+  Notation "x ≡[ R ] y" := (` R x y) (at level 80).
+  Notation "x ≡ y" := (` _ x y) (at level 80).
+  Notation "x [≡] y" := (b ` _ x y) (at level 80).
   Goal 5 ~ 6.
     coinduction R H.
     Restart.
-    coinduction R _. 
-    Restart.
-    coinduction ? _. 
+    coinduction R _.
   Abort.
   Goal 5 ~ 6 /\ 7 ~ 8.
     coinduction R H.
@@ -52,7 +50,7 @@ Section s.
   Goal forall n m, gfp b' n m.
   Proof.
     coinduction R H.
-    symmetric. 
+    symmetric.
   Abort.  
   Goal forall n m, gfp b' (n+m) (m+n).
   Proof.
@@ -61,20 +59,16 @@ Section s.
   Abort.  
   Goal forall n m, gfp b' (n+m) (m+m).
   Proof.
-    Fail symmetric. 
+    Fail symmetric.
     coinduction R H.
-    Fail symmetric.             (* TOFIX: message *)
+    Fail symmetric.             (* TOFIX: message (problem is that "tac1;[tac2|]" 
+                                   fails to report the error messages from tac2) *)
     symmetric using idtac.
+    Fail default_sym_tac.
   Abort.  
   Goal forall n m, (forall a, gfp b' (n+a) (a+m)) /\ (forall b, gfp b' (b+m) (n+b)).
     coinduction R H.
     symmetric. 
-  Abort.
-
-  Goal True.
-    assert (R: nat -> nat -> Prop). admit.
-    cut (forall x: nat, t b R x x). admit.
-    find_candidate.
   Abort.
   
 End s.
@@ -86,10 +80,19 @@ Section h.
   Goal gfp b 4 true (inl 5).
   Proof.
     coinduction R H.            (* TOTHINK: a bit slow, why? *)
-    cut (forall c, t b R 3 c (inr c)). admit.
+    cut (forall c, `R 3 c (inr c)). admit.
     accumulate H'.
-    cut (forall n, t b R n false (inl n)). admit.
+    cut (forall n, `R n false (inl n)). admit.
     accumulate H''.
+  Abort.
+End h.
+
+Section h.
+  Variable b: mon (nat -> bool -> nat+bool -> unit -> Prop).
+
+  Goal gfp b 4 true (inl 5) tt.
+  Proof.
+    (* coinduction R H. *)            (* TOTHINK: reaaaaally slow, why? *)
   Abort.
 End h.
 
@@ -105,7 +108,7 @@ Section h.
   Goal gfp b _ (f 2) (f 4).
   Proof.
     coinduction R H.
-    cut (forall n x, t b R _ (f n) x). admit.
+    cut (forall n x, `R _ (f n) x). admit.
     accumulate H'. 
   Abort.
 End h.
