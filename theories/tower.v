@@ -29,7 +29,7 @@ Section s.
  Qed.
    
 
- Context {b: mon X}.
+ Variable b: mon X.
 
  (** * Final chain as an inductive predicate *)
 
@@ -59,29 +59,19 @@ Section s.
  (** tower induction principle (just a rephrasing of induction on the Chain predicate *)
  Proposition tower (P: X -> Prop):
    inf_closed P ->
-   (forall x, C x -> P x -> P (b x)) ->
-   (forall x, C x -> P x).
- Proof.
-   intros Pinf Pb x Cx; cbn.
-   induction Cx; auto.
- Qed.
- Proposition tower' (P: X -> Prop):
-   inf_closed P ->
    (forall x: Chain, P x -> P (b x)) ->
    (forall x: Chain, P x).
  Proof.
-   intros Hinf Hb x. apply tower; trivial.
-   intros y Cy; apply (Hb (chain Cy)).
-   apply x. 
+   intros Hinf Hb [x Cx]; cbn.
+   induction Cx; auto.
+   now apply (Hb (chain Cx)).
  Qed.
 
  (** elements of the chain are closed under [b] *)
- Lemma b_chain (x: Chain): b x <= x.
+ Lemma b_chain: forall x: Chain, b x <= x.
  Proof.
-   apply (tower (P:=fun x => b x <= x)). 
-   - apply inf_closed_leq.
-   - intros; now apply b.
-   - apply x.
+   apply (tower (inf_closed_leq _)).
+   intros; now apply b.
  Qed.
  
  (** [gfp] is below all elements of the chain (by definition) *)
@@ -93,11 +83,11 @@ Section s.
  Proof. apply antisym. apply b_chain. apply gfp_pfp. Qed.
 
  (** and indeed the largest (post)-fixpoint *)
- Theorem gfp_gfp x: x <= b x -> x <= gfp.
+ Theorem leq_gfp x: x <= b x -> x <= gfp.
  Proof.
-   intro H. apply inf_spec. apply tower. 
-   - apply (inf_closed_leq (const x)).
-   - intros y Cy xy. now rewrite H, xy. 
+   intro H. apply gfp_prop.
+   apply (tower (inf_closed_leq (const x))); cbn.
+   intros y xy. now rewrite H, xy. 
  Qed.
  
  (** relativised tower induction *)
@@ -107,7 +97,7 @@ Section s.
    (forall x: Chain, Q x -> P x -> P (b x)) ->
    (forall x: Chain, Q x -> P x).
  Proof.
-   intros Qleq Pinf Pb. apply (tower' (P:= fun x => Q x -> P x)). 
+   intros Qleq Pinf Pb. apply (tower (P:=fun x => Q x -> P x)). 
    - now apply inf_closed_impl.
    - intros x I H. cut (Q x); auto. now rewrite <-b_chain. 
  Qed.
@@ -115,14 +105,12 @@ Section s.
  Definition compat f := f ° b <= b ° f.
  Lemma compat_chain (x: Chain): forall f, compat f -> f x <= x.
  Proof.
-   intros f Hf. revert x. apply (tower' (P:=fun x => f x <= x)).
-   - apply inf_closed_leq. 
-   - intros x fx. rewrite (Hf x). now apply b. 
+   intros f Hf. revert x. apply (tower (inf_closed_leq _)). 
+   intros x fx. rewrite (Hf x). now apply b. 
  Qed.
  
 End s.
-Arguments gfp {_ _} _. 
-Arguments Chain {_ _} _.
+Global Opaque gfp. 
   
 
 (** * Symmetry arguments *)
@@ -154,6 +142,13 @@ Section symmetry.
    rewrite (symmetrical (elem x)). apply cap_weq; trivial.
    cbn. now rewrite invol_chain.
  Qed.
+
+ (** reasoning by symmetry on plain post-fixpoints *)
+ Proposition symmetric_pfp x: i x <= x -> x <= s x -> x <= b x.
+ Proof.
+   intros ix sx. rewrite symmetrical. apply cap_spec. split. assumption.
+   cbn. apply switch. rewrite ix at 1. apply switch in ix. now rewrite <-ix. 
+ Qed. 
 
 End symmetry.
 Arguments Symmetrical {_ _}.

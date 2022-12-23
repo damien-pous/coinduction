@@ -214,7 +214,7 @@ Module reification.
  Proof.
    intro H.
    cut (forall R: Chain b, pT `R x). intros E. apply E. 
-   apply (tower' (inf_closed_pT _ _ x)). apply H.
+   apply (tower (inf_closed_pT _ _ x)). apply H.
  Qed.
 
  (* idea: the above lemma can be used as follows: *)
@@ -485,4 +485,4 @@ Ltac solve_sym := solve [
 
 (** performing a single step 
     (equivalent to [accumulate _], except that we do not deal with composite candidates and the coinductive proof need not be started) *)
-Ltac step := apply b_chain; simpl body.
+Ltac step := apply sub_bChain; simpl body.

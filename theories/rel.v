@@ -10,6 +10,7 @@ Set Implicit Arguments.
 
 (** * Generic definitions and results about relations *)
 
+
 (** converse function (an involution) *)
 Program Definition converse {A}: mon (A -> A -> Prop) :=
   {| body R x y := R y x |}.
@@ -28,6 +29,15 @@ Proof. apply invol_cup. Qed.
 Lemma converse_cap S (R R': relation S):
   converse (cap R R') == cap (converse R) (converse R').
 Proof. apply invol_cap. Qed.
+
+(** squaring function *)
+Program Definition square {A}: mon (A -> A -> Prop) :=
+  {| body R x y := exists2 z, R x z & R z y |}.
+Next Obligation. cbv. firstorder. Qed. 
+
+Lemma converse_square S (R: relation S):
+  converse (square R) == square (converse R).
+Proof. simpl. firstorder. Qed.
 
 Notation "` R" := (elem R) (at level 2).
 
@@ -51,11 +61,11 @@ Section s.
   Proof. apply (gfp_chain (b:=b)). Qed.
   
   Proposition Reflexive_chain: (forall R: Chain b, Reflexive `R -> Reflexive (b `R)) -> forall R: Chain b, Reflexive `R.
-  Proof. apply tower', inf_closed_reflexive. Qed.  
+  Proof. apply tower, inf_closed_reflexive. Qed.  
   Proposition Symmetric_chain: (forall R: Chain b, Symmetric `R -> Symmetric (b `R)) -> forall R: Chain b, Symmetric `R.
-  Proof. apply tower', inf_closed_symmetric. Qed.  
+  Proof. apply tower, inf_closed_symmetric. Qed.  
   Proposition Transitive_chain: (forall R: Chain b, Transitive `R -> Transitive (b `R)) -> forall R: Chain b, Transitive `R.
-  Proof. apply tower', inf_closed_transitive. Qed.  
+  Proof. apply tower, inf_closed_transitive. Qed.  
 
   (** helpers for proving that n-ary functions preserve chain elements *)
   Fixpoint nfun n :=
@@ -81,7 +91,7 @@ Section s.
   Proposition Proper_chain n f:
     (forall R: Chain b, Proper (respectful_iter n `R `R) f -> Proper (respectful_iter n (b `R) (b `R)) f) ->
     forall R: Chain b, Proper (respectful_iter n `R `R) f.
-  Proof. exact (tower' (inf_closed_proper n f)). Qed.
+  Proof. exact (tower (inf_closed_proper n f)). Qed.
 
   (** symmetry arguments *)
 
