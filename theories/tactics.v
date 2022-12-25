@@ -1,7 +1,5 @@
 (** * Tactics for coinductive n-ary relations *)
 
-(* TODO: update comments! *)
-
 (**
 we provide three tactics:
 - [coinduction R H] to start a proof by coinduction 
@@ -112,15 +110,13 @@ Qed.
 (** * reification tools to transform propositions in the language of
       gallina into relation containments, e.g.,
 
-      [forall x y, R (x+y) (y+x+x)]
+      [forall x y: X, R (x+y) (y+x+x)]
       becomes 
-      [sup_all (fun x => sup_all (fun y => pair (x+y) (y+x+x))) <= R]
-      and the LHS gets further reified using [pT]
+      [{(x+y, y+x+x) | x,y\in X } <= R]
 
-      [forall x y, R (x+y) y /\ R x y]
+      [forall x y: X, R (x+y) y /\ R x y]
       becomes 
-      [sup_all (fun x => sup_all (fun y => cup (pair (x+y) y) (pair x y))) <== R]
-      and the LHS gets further reified using [pT]
+      [{(x+y, y) | x,y: X } \cup {(x, y) | x,y: X } <= R]
 
 *)
 Module reification.
@@ -197,7 +193,7 @@ Module reification.
  
  (** ** tools for the [coinduction] tactic *)
 
-
+ (**  *)
  Lemma inf_closed_pT A c (x: fT A c): inf_closed (fun y => pT y x).
  Proof.
    intros T HT. 
@@ -223,16 +219,14 @@ Module reification.
   Variable b: mon (nat -> nat -> Prop).
   Goal forall n m (k: n=m), gfp b (n+n) (m+m) /\ forall k, gfp b (n+k) (k+m).
     apply (let A := ABS' nat (ABS' nat PRP) in
-           coinduction A
+           tower A
             (abs nat (fun n =>
              abs nat (fun m => 
              abs (n=m) (fun _ => 
                           cnj hol (abs nat (fun _ => hol))))))
-            b
             ((fun n m _ => (tuple A (n+n) (m+m), fun k => tuple A (n+k) (k+m))))
           ).
-    simpl pT. simpl curry. simpl REL.
-    Transparent cap. simpl cap. Opaque cap.
+    simpl pT.
     intros R HR. 
   Abort.
  End s.
@@ -377,20 +371,19 @@ Declare ML Module "coq-coinduction.plugin".
 
     [coinduction R H] moves to a goal
 
-    R: A -> A -> Prop
-    H: forall x y..., t b R u v /\ forall z, P -> t b R s t
+    R: Chain b
+    H: forall x y..., `R u v /\ forall z, P -> `R s t
     -------------------------------------------------------
-    forall x y..., bt b R u v /\ forall z, P -> bt b R s t
+    forall x y..., b `R u v /\ forall z, P -> b `R s t
 
-    [R] is the bisimulation up-to candidate.
+    [R] should be understood as the bisimulation up-to candidate.
     [H] expresses the pairs [R] is assumed to contain.
-    Those pairs are actually assumed to be only in [t b R], the closure of [R] under the companion, simply because this is more convenient in practice.
-    Note the move to [bt] in the conclusion: now we should play at least one step of the coinductive game for all pairs inserted in the candidate.
+    Note the move to [b `R] in the conclusion: now we should play at least one step of the coinductive game for all pairs inserted in the candidate.
     Also note that [H] maybe an introduction pattern.
  *)
-(** we use the OCaml defined [apply_coinduction] tactic, whose role is:
+(** we use the OCaml defined [apply_ptower] tactic, whose role is:
     - to parse the goal to recognise a bisimulation candidate
-    - to `apply' [reification.coinduction] with reified arguments corresponding to that candidate
+    - to `apply' [reification.ptower] with reified arguments corresponding to that candidate
     - to `change' the new goal to get rid of the reified operations and get back to a goal resembling the initial one
     (The last step could be implemented with [simpl reification.pT], but this would result in unwanted additional simplifications, and this resets names of bound variables in a very bad way. This is why we spend time in OCaml to reconstruct a type for the new goal by following syntactically the initial one.)
   *)
@@ -401,33 +394,32 @@ Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
 
 (** when the goal is of the shape, typically obtained after starting a proof by coinduction and    performing one step of the coinductive game:
 
-    R: A -> A -> Prop
-    H: forall x y, t b R u v
-    H': forall x y z, P -> t b R s t
+    R: Chain b
+    H: forall x y, `R u v
+    H': forall x y z, P -> `R s t
     --------------------------------
-    forall i j, t b R p q
+    forall i j, `R p q
 
     (more complex alternations of quantifiers/conjunctions/implications being allowed in both hypotheses and conclusion)
 
     [accumulate H''] moves to a goal
 
-    R: A -> A -> Prop
-    H: forall x y, t b R u v
-    H': forall x y z, P -> t b R s t
-    H'': forall i j, t b R p q
+    R: Chain b
+    H: forall x y, `R u v
+    H': forall x y z, P -> `R s t
+    H'': forall i j, `R p q
     --------------------------------
-    forall i j, bt b R p q
+    forall i j, b `R p q
 
-    The conclusion has saved as an hypothesis [H''],
+    The conclusion has been saved as an hypothesis [H''],
     and a [b] has been inserted in the conclusion, so that we have to play at least one step of the coinductive game on the added pairs
 
     Like for [coinduction], [H''] maybe an introduction pattern.
  *)
 
 (** the implementation is a bit more involved:
-    - we first find the current bisimulation candidate, using the OCaml tactic [find_candidate]
     - we successively revert all assumptions about this candidate into the conclusion
-    - we use the OCaml tactic [apply_accumulate] in order to reify the goal, apply [reification.accumulate] with appropriate arguments, and get rid of the reified operations 
+    - we use the OCaml tactic [apply_ptower] in order to reify the goal, apply [reification.ptower] with appropriate arguments, and get rid of the reified operations 
     - then we move the hypotheses back to the context,
     - and we introduce the new hypothesis
   *)
@@ -448,13 +440,14 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
 
 (** reasoning on symmetric candidates with symmetric functions *)
 (** this tactic makes it possible to play only half of the coinductive game in cases where both the game and the current goal are symmetric:
-    - that the game is symmetric is inferred using the typeclasse [Sym_from]
+    - that the game is symmetric is inferred using the typeclasse [Symmetrical]
     - that the goal is symmetric is proven using the given tactic (by default, [firstorder])
     the goal should be of the form
-    [forall x y..., bt b R u v] 
+    [forall x y..., b `R u v] 
     it moves to a goal of the form
-    [forall x y..., s (t b R) u v] 
-    ([t] is the companion, [b] the function for the coinductive game, [s] the function for the `half of [b]'; conjunctions are also allowed, like in the other tactics)
+    [forall x y..., s `R u v] 
+    (where [R: Chain b] with [b] the function for the coinductive game, and [s] the function for the `half of [b]')
+    conjunctions are also allowed, like in the other tactics)
  *)
 (** as above, we use the OCaml defined tactic [apply_by_symmetry] in order to apply the lemma [reification.by_symmetry] and set the resulting goal back into a user-friendly shape *)
 Ltac default_sym_tac := solve[clear;firstorder]||fail "could not get symmetry automatically".
@@ -472,16 +465,6 @@ Tactic Notation "symmetric" :=
   | R: Chain _ |- _ => symmetric R
   | _ => fail "could not find the coinductive candidate"
   end.
-
-(* old symmetry-solving tactic *)
-(*
-Ltac solve_sym := solve [
-  repeat (rewrite converse_sup; apply sup_spec; intros);
-  rewrite converse_pair;
-  repeat (eapply eleq_xsup_all; intros);
-  trivial ] || idtac "could not get symmetry automatically".
-*)
-
 
 (** performing a single step 
     (equivalent to [accumulate _], except that we do not deal with composite candidates and the coinductive proof need not be started) *)
