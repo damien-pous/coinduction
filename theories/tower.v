@@ -15,6 +15,10 @@ Section s.
    intros HP HQ T. rewrite cap_spec; intros [TP TQ].
    split. now apply HP. now apply HQ.
  Qed.
+ Lemma inf_closed_all A (P: A -> X -> Prop): (forall a, inf_closed (P a)) -> inf_closed (fun x => forall a, P a x).
+ Proof.
+   intros HP T TP a. apply HP. intros ??. now apply TP. 
+ Qed.
  Lemma inf_closed_impl (P Q: X -> Prop): Proper (leq ==> leq) P -> inf_closed Q -> inf_closed (fun x => P x -> Q x).
  Proof.
    intros HP HQ T HT H. apply HQ. 
