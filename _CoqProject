@@ -11,6 +11,7 @@ theories/companion.v
 theories/rel.v
 theories/tactics.v
 theories/tests.v
+theories/all.v
 
 src/reification.ml
 src/reification.mli
