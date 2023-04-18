@@ -16,6 +16,7 @@ we provide three tactics:
 
 
 Require Import lattice tower rel.
+Import CoindNotations.
 Set Implicit Arguments.
 
 (** * Arities and relations *)

@@ -39,7 +39,13 @@ Lemma converse_square S (R: relation S):
   converse (square R) == square (converse R).
 Proof. simpl. firstorder. Qed.
 
-Notation "` R" := (elem R) (at level 2).
+(* TODO: is there a way to turn [elem] into a coercion? *)
+(** notation protected in a module so that the library stays compatible with [Program],
+    where "`" is declared at level 10
+ *)
+Module Import CoindNotations.
+Notation "` R" := (elem R) (at level 2). 
+End CoindNotations.
 
 Section s.
   Context {A: Type}.

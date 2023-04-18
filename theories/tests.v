@@ -1,7 +1,8 @@
 
 (** * tests for the exported tactics *)
 
-Require Import tower rel tactics.
+Require Import lattice tower rel tactics.
+Import CoindNotations.
     
 Section s.
 
