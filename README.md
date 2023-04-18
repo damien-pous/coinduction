@@ -20,9 +20,12 @@ Examples on how to use the library may be found in the associated coq-coinductio
  
 ## Modules
  + `lattice.v`     : complete lattices, monotone functions in such lattices
- + `coinduction.v` : abstract theory of coinduction in complete lattices, companion
+ + `tower.v`       : abstract theory of coinduction via tower induction
  + `rel.v`         : tools for the complete lattice of binary relations
  + `tactics.v`     : tactics for coinductive predicates/relations
+ + `companion.v`   : abstract theory of the companion (no longer used)
+ + `tests.v`       : sanity checks
+ + `all.v`         : single module to load the library (despite the name, excludes companion and tests)
 
 ## Meta
 

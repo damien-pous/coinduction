@@ -1,3 +1,12 @@
+* upcoming: v2.0
+
+- tower-based reimplementation of the tactic
+  not backward compatible, but required changes should only result in simplifications
+  (see changes in package coq-coinduction-examples)
+  lemmas and definition related to the companion are kept in [companion.v]
+- library should be loaded with [From Coinduction Require Import all].
+- fixed efficiency issues with large arities
+
 * 8 Sep. 2022: v1.6
 
 - compatibility with Coq 8.16
