@@ -34,7 +34,6 @@ Examples on how to use the library may be found in the associated coq-coinductio
 - Coq-community maintainer(s):
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
 - License: [GNU LGPL3+]
-- Compatible Coq versions: 8.13 or later
 - Coq namespace: `Coinduction`
 - Related publication(s):
   - [Coinduction All the Way Up](https://hal.archives-ouvertes.fr/hal-01259622) doi:[10.1145/2933575.2934564](http://dx.doi.org/10.1145/2933575.2934564)
@@ -57,3 +56,9 @@ cd coinduction
 make
 make install
 ```
+
+## Compatibility
+
+- version v1.6 compiles with both Coq 8.16 and 8.17
+- so does version v1.7, which is feature equivalent but not backward-compatible with v1.6
+- the master branch of this git repository should compile with Coq master
