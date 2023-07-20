@@ -112,7 +112,11 @@ Section s.
    intros f Hf. revert x. apply (tower (inf_closed_leq _)). 
    intros x fx. rewrite (Hf x). now apply b. 
  Qed.
- 
+
+ (** an instance of [gfp_chain] which is useful in some concrete use cases *)
+ Lemma gfp_bchain (x: Chain): gfp <= b x.
+ Proof. apply gfp_chain. Qed.
+
 End s.
 Global Opaque gfp. 
   
