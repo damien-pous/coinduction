@@ -31,6 +31,8 @@ Class CompleteLattice (X: Type) := {
   (* leq_xt: *) (forall x, leq x top)
 }.
 
+#[global] Hint Mode CompleteLattice ! : typeclass_instances.
+
 Declare Scope lattice.
 Open Scope lattice.
 Infix "==" := weq (at level 70): lattice.
@@ -39,8 +41,9 @@ Notation sup P := (sup' P id).
 Notation inf P := (inf' P id).
 
 Section s.
- Context `{L: CompleteLattice}.
- #[export] Instance PreOrder_leq: PreOrder leq.
+ Context {X} {L: CompleteLattice X}.
+ Implicit Types (x y z : X).
+ #[export] Instance PreOrder_leq: PreOrder (leq (X := X)).
  Proof. apply CL_props. Qed.
  Lemma weq_spec: forall x y, x == y <-> (x <= y /\ y <= x).
  Proof. apply CL_props. Qed.
@@ -154,9 +157,10 @@ Qed.
 
 Section sup.
  Context {X} {L: CompleteLattice X}.
+ Implicit Types (x y z : X).
 
  (** Partial order *)
- Global Instance Equivalence_weq: Equivalence weq.
+ Global Instance Equivalence_weq: Equivalence (weq (X := X)).
  Proof.
    constructor.
     intro x. now apply weq_spec.
@@ -202,7 +206,7 @@ Section sup.
  Proof. apply antisym. now apply sup_spec. apply leq_bx. Qed.
  Lemma sup_single I (f: I -> X) i: sup' (eq i) f == f i.
  Proof. apply antisym. apply sup_spec. now intros ? <-. now apply leq_xsup'. Qed.
- Lemma sup_top: sup top == top.
+ Lemma sup_top: sup top == top (X := X).
  Proof. apply antisym. apply leq_xt. now apply leq_xsup. Qed.
  
  
@@ -232,13 +236,14 @@ Section sup.
  Lemma cupxt x: cup x top == top.
  Proof. rewrite cupC. apply cuptx. Qed.
  
- Global Instance cup_leq: Proper (leq ==> leq ==> leq) cup.
+ Global Instance cup_leq: Proper (leq ==> leq ==> leq) (cup (X := X)).
  Proof.
    intros x x' Hx y y' Hy.
    apply cup_spec. rewrite Hx, Hy.
    now apply cup_spec.
  Qed.
- Global Instance cup_weq: Proper (weq ==> weq ==> weq) cup := op_leq_weq_2.
+ Global Instance cup_weq: Proper (weq ==> weq ==> weq) (cup (X := X)) :=
+  op_leq_weq_2.
  
 End sup.
 Global Hint Resolve cup_l cup_r: core.
@@ -258,6 +263,7 @@ End sup_cup.
 (** * Properties obtained by duality *)
 Section inf.
  Context {X} {L: CompleteLattice X}.
+ Implicit Types (x y z : X).
 
  (** Greatest lower bounds *)
  Global Instance inf_leq I:
@@ -279,7 +285,7 @@ Section inf.
  Proof. dual @sup_single. Qed.
  Lemma inf_cup I (f: I -> X) P Q: inf' (cup P Q) f == cap (inf' P f) (inf' Q f).
  Proof. dual @sup_cup. Qed.
- Lemma inf_top: inf top == bot.
+ Lemma inf_top: inf top == bot (X := X).
  Proof. dual @sup_top. Qed.
 
  (** Binary meet *)
@@ -305,9 +311,10 @@ Section inf.
  Lemma capxb x: cap x bot == bot.
  Proof. dual @cupxt. Qed.
 
- Global Instance cap_leq: Proper (leq ==> leq ==> leq) cap.
+ Global Instance cap_leq: Proper (leq ==> leq ==> leq) (cap (X := X)).
  Proof. intros ??????. now dual @cup_leq. Qed.
- Global Instance cap_weq: Proper (weq ==> weq ==> weq) cap := op_leq_weq_2.
+ Global Instance cap_weq: Proper (weq ==> weq ==> weq) (cap (X := X)) :=
+  op_leq_weq_2.
 
 End inf.
 Global Hint Resolve cap_l cap_r: core.
@@ -429,9 +436,11 @@ Infix "°" := comp (at level 20): lattice.
 Global Opaque cup bot cap top.  (* TODO: check that we still need this *)
 
 (** application as a function [X->X]->X->X is monotone in its two arguments *)
-#[export] Instance app_leq {X} {L: CompleteLattice X}: Proper (leq ==> leq ==> leq) body.
+#[export] Instance app_leq {X} {L: CompleteLattice X}:
+ Proper (leq ==> leq ==> leq) (body (X := X)).
 Proof. intros f g fg x y xy. transitivity (f y). now apply f. now apply fg. Qed.
-#[export] Instance app_weq {X} {L: CompleteLattice X}: Proper (weq ==> weq ==> weq) body := op_leq_weq_2.
+#[export] Instance app_weq {X} {L: CompleteLattice X}:
+ Proper (weq ==> weq ==> weq) (body (X := X)) := op_leq_weq_2.
 
 
 (** * Involutions *)

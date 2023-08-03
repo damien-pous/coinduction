@@ -136,9 +136,9 @@ Section s2.
 
  (** [gfp] is monotone, as a function from [mon X] to [X] 
      (be careful: [t] is not monotone from [mon X] to [mon X]) *)
- Instance gfp_leq: Proper (leq ==> leq) gfp.
+ Instance gfp_leq: Proper (leq ==> leq) (gfp (X := X)).
  Proof. intros b b' Hb. apply leq_gfp. rewrite gfp_fp at 1. apply Hb. Qed.
- Instance gfp_weq: Proper (weq ==> weq) gfp := op_leq_weq_1.
+ Instance gfp_weq: Proper (weq ==> weq) (gfp (X := X)) := op_leq_weq_1.
  
  Variable b: mon X.
 
