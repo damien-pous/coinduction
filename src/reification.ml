@@ -224,7 +224,7 @@ let apply rname mode goal =
         we do so in OCaml rather than in Ltac: this makes it possible to avoid the mess with de Bruijn indices *)
      (* debug (Cnd.ptower a b cs c x); *)
      (* debug g; *)
-     tclTHEN (Generalize.revert [rname])
+     tclTHEN (Tactics.revert [rname])
        (tclTHEN (typecheck_and_apply (Cnd.ptower a b cs c x))
           (tclTHEN (Tactics.introduction rname)
              (Tactics.convert_concl ~cast:false ~check:true g DEFAULTcast)
