@@ -64,6 +64,6 @@ make install
 
 ## Compatibility
 
-- version v1.6 compiles with both Coq 8.16 and 8.17
-- so does version v1.7, which is feature equivalent but not backward-compatible with v1.6
+- versions v1.6, v1.7 and v1.8 all compile with Coq 8.16.1, 8.17.1 and 8.18.0
+- v1.7 is feature equivalent but not backward-compatible with v1.6
 - the master branch of this git repository should compile with Coq master

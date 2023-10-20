@@ -19,7 +19,7 @@ build: [
 ]
 install: [make "install"]
 depends: [
-  "coq" {(>= "8.16")}
+  "coq" {(>= "8.16.1")}
 ]
 
 tags: [

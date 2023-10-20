@@ -1,3 +1,8 @@
+* 20 OCt 2023: v1.8
+
+- compatibility with Coq 8.18
+- hint mode for typeclass CompleteLattice to avoid divergences
+
 * 13 Jul 2023: v1.7
 
 - tower-based reimplementation of the tactic
