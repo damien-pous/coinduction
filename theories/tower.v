@@ -119,7 +119,37 @@ Section s.
 
 End s.
 Global Opaque gfp. 
-  
+
+(** if [f<=g] then [gfp f <= gfp g] *)
+#[export] Instance gfp_leq {X L}: Proper (leq ==> leq) (@gfp X L).
+Proof. intros f g fg. apply leq_gfp. rewrite <-fg. apply gfp_pfp. Qed.
+#[export] Instance gfp_weq {X L}: Proper (weq ==> weq) (@gfp X L) := op_leq_weq_1.
+
+(** if [f<=g] then the final chain of [f] is covered by the final chain of [g] *)
+Lemma C_leq {X} {L: CompleteLattice X} (f g: mon X) (fg: f <= g): forall x, C f x -> exists y, C g y /\ x <= y.
+Proof.
+  induction 1 as [x Cfx [y [Cgy xy]]| F FC _ ].
+  - exists (g y); split. now apply Cb. now rewrite xy; apply fg.
+  - exists (inf (fun y => C g y /\ exists x, F x /\ x <= y)); split.
+    apply Cinf. now intros y [Cgy _].
+    apply inf_spec; intros y [Cgy [x [Fx xy]]].
+    rewrite <-xy. now apply leq_infx.
+Qed.
+(** if [f==g] then the final chain of [f] is equivalent to that of [g] *)
+Lemma C_weq {X} {L: CompleteLattice X} (f g: mon X) (fg: f == g): forall x, C f x -> exists y, C g y /\ x == y.
+Proof.
+  induction 1 as [x Cfx [y [Cgy xy]]| F FC IH ].
+  - exists (g y); split. now apply Cb. now rewrite xy; apply fg.
+  - exists (inf (fun y => C g y /\ exists x, F x /\ x == y)); split.
+    apply Cinf. now intros y [Cgy _]. apply antisym. 
+    -- apply inf_spec; intros y [Cgy [x [Fx <-]]].
+       now apply leq_infx.
+    -- apply inf_spec; intros x Fx.
+       destruct (IH x Fx) as [y [Cgy xy]].
+       rewrite xy. apply leq_infx; split; trivial.
+       now exists x.
+Qed.
+
 
 (** * Symmetry arguments *)
 

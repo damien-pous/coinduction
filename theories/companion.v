@@ -8,7 +8,8 @@
 *)
 
 Require Export lattice.
-Require Classical.              (* only for distributivity of the companion *)
+Require tower.          (* for the alternative definition of the companion *)
+Require Classical.      (* only for distributivity of the companion *)
 Set Implicit Arguments.
 
 (** * Knaster-Tarski and compatibility  *)
@@ -134,11 +135,18 @@ Global Opaque t.
 Section s2.
  Context {X} {L: CompleteLattice X}.
 
- (** [gfp] is monotone, as a function from [mon X] to [X] 
-     (be careful: [t] is not monotone from [mon X] to [mon X]) *)
+ (** [gfp] is monotone, as a function from [mon X] to [X] *)
  Instance gfp_leq: Proper (leq ==> leq) (gfp (X := X)).
  Proof. intros b b' Hb. apply leq_gfp. rewrite gfp_fp at 1. apply Hb. Qed.
  Instance gfp_weq: Proper (weq ==> weq) (gfp (X := X)) := op_leq_weq_1.
+ (** [t] respects equality as a function from [mon X] to [mon X] 
+     (be careful: [t] is not monotone from [mon X] to [mon X]) *)
+ Instance t_weq: Proper (weq ==> weq) (t (X:=X)).
+ Proof.
+   assert (E: Proper (weq ==> leq) (t (X:=X))). 
+   { intros f g fg. apply leq_t. rewrite <-fg. apply compat_t. }
+   intros f g fg. apply antisym; apply E. apply fg. symmetry. apply fg.
+ Qed.
  
  Variable b: mon X.
 
@@ -567,85 +575,88 @@ End s.
 End paco.
 
 
-(** * alternative definition of the companion, using Kleene iteration *)
+(** * properties of the companion w.r.t. the final chain *)
 Module chain.
+Import tower.
 Section s.
  Context {X} {L: CompleteLattice X}. 
  Variable b: mon X.
- Notation t := (t b).
- Inductive S: X -> Prop :=
- | Sb: forall x, S x -> S (b x)
- | Sinf: forall T, T <= S -> S (inf T).
- Lemma gfpS: gfp b == inf S.
+ Notation t := (t b). 
+ Notation C := (C b).
+ Notation Chain := (Chain b).
+ Notation "` x" := (elem x) (at level 2).
+
+ (** the greatest fixpoints as defined here an in [tower] necessarily coincide *)
+ Lemma gfp_tower: companion.gfp b == tower.gfp b.
  Proof.
-   apply antisym. apply inf_spec. simpl. intros u U. induction U.
-   rewrite gfp_pfp. now apply b. now apply inf_spec.
-   apply leq_gfp. apply leq_infx. now apply Sb, Sinf.
+   apply antisym.
+   - apply tower.leq_gfp. apply companion.gfp_pfp.
+   - apply companion.leq_gfp. apply tower.gfp_pfp.
  Qed.
- Lemma tS: forall s, S s -> t s == s.
- Proof.
-   intros s H. apply antisym. 2: apply id_t.
-   induction H as [s Hs IH|T HT IH].
-   rewrite (compat_t b s). now apply b.
-   apply inf_spec. intros s Hs. rewrite <-(IH _ Hs). apply t. now apply leq_infx.
- Qed.               
- Definition S_ x s := S s /\ x <= s.
- Definition t'_ x := inf (S_ x).
+
+ (** the companion preserves all elements of the final chain  *)
+ Lemma t_chain (x: Chain): t `x <= `x.
+ Proof. apply compat_chain, compat_t. Qed.
+
+ (** characterisation of the companion via the final chain *)
+ Definition C_ x s := C s /\ x <= s.
+ Definition t'_ x := inf (C_ x).
  Lemma t'_mon: Proper (leq ==> leq) t'_.
  Proof.
-   intros x y H. apply inf_spec; intros s [Ss E]. apply leq_infx.
+   intros x y H. apply inf_spec; intros s [Cs E]. apply leq_infx.
    split. assumption. now rewrite H. 
  Qed.
  Definition t' := Build_mon t'_mon. 
  Lemma id_t' x: x <= t' x.
  Proof. apply inf_spec. now intros s [_ ?]. Qed.
- Lemma St' x: S (t' x).
- Proof. apply Sinf. now intros ? [? ?]. Qed.
+ Lemma Ct' x: C (t' x).
+ Proof. apply Cinf. now intros ? [? ?]. Qed.
  Lemma compat_t': t' ° b <= b ° t'.
  Proof.
    intro x. simpl. apply leq_infx. split.
-   apply Sb. apply St'. apply b. apply id_t'. 
+   apply Cb. apply Ct'. apply b. apply id_t'. 
  Qed.
- 
  Theorem tt': t == t'.
  Proof.
    apply antisym.
-   intro x. rewrite (id_t' x) at 1. now rewrite tS by apply St'.
+   intro x. rewrite (id_t' x) at 1.
+   apply (t_chain (chain (Ct' x))).
    apply leq_t, compat_t'.
  Qed.
- 
- Corollary leq_t' f: f <= t <-> forall s, S s -> f s <= s.
+
+ (** characterisation of the functions below the companion, via the final chain *)
+ Corollary leq_t' f: f <= t <-> forall x: Chain, f `x <= `x.
  Proof.
    split.
-   intros E s H. now rewrite (E s), tS.
+   intros E x. rewrite E. now apply t_chain. 
    intros H. apply Coinduction. intro x. simpl.
-   rewrite (id_t' x) at 1. rewrite H by apply Sb, St'.
-   apply b. rewrite <-tt'. apply t_T.
+   rewrite (id_t' x) at 1. rewrite (H (chain (tower.Cb (Ct' x)))); cbn.
+   apply b. rewrite <-(tt' x). apply t_T.
  Qed.
  
- Lemma St x: S (t x).
+ Lemma Ct x: C (t x).
  Abort.
- Lemma St x: exists tx, S tx /\ tx == t x.
- Proof. exists (t' x). split. apply St'. now rewrite tt'. Qed.
+ Lemma Ct x: exists tx, C tx /\ tx == t x.
+ Proof. exists (t' x). split. apply Ct'. now rewrite tt'. Qed.
 
- Lemma Sflat s: S s -> exists T, T<=S /\ s == inf' T b.
+ Lemma Cflat c: C c -> exists T, T<=C /\ c == inf' T b.
  Proof.
-   induction 1 as [s Hs IH|T HT IH].
-   exists (eq s). split. now intros ? <-.
+   induction 1 as [c Hc IH|T HT IH].
+   exists (eq c). split. now intros ? <-.
    apply antisym. apply inf_spec. now intros ? <-.
    eapply eleq_infx; eauto.
    (* exists (fun t => exists a (A: T a), match IH a A return Prop with ex_intro _ U _ => U t end). *)
  Abort.
  
- Lemma Sflat s: S s -> s == inf' (fun t => S t /\ s <= b t) b.
+ Lemma Cflat c: C c -> c == inf' (fun d => C d /\ c <= b d) b.
  Proof.
    intro E. apply antisym. now apply inf_spec; intros t [_ T].
-   induction E as [s Hs IH|T HT IH].
+   induction E as [c Hc IH|T HT IH].
    eapply eleq_infx; eauto.
-   apply inf_spec. intros s Hs.
-   rewrite <- (IH s Hs). apply inf_leq; trivial. 
-   intros t [St sbt]. split. assumption.
-   rewrite <-sbt. now apply leq_infx.
+   apply inf_spec. intros c Hc.
+   rewrite <- (IH c Hc). apply inf_leq; trivial. 
+   intros d [Hd sbd]. split. assumption.
+   rewrite <-sbd. now apply leq_infx.
  Qed.
 
  (** * additivity of the companion (assuming classical logic) *)
@@ -657,16 +668,16 @@ Section s.
    destruct (H _ Px). assumption. exfalso; eauto. 
  Qed.
 
- Lemma S_linear x y: S x -> S y -> x <= y \/ y <= x.
+ Lemma C_linear x y: C x -> C y -> x <= y \/ y <= x.
  Proof.
-   intro Sx. revert y. induction Sx as [x Hx IH|T HT IH]; intros y Sy.
-   - pose proof (Sflat Sy) as E.
-     set (T t := S t /\ y <= b t) in E. 
+   intro Cx. revert y. induction Cx as [x Hx IH|T HT IH]; intros y Hy.
+   - pose proof (Cflat Hy) as E.
+     set (T t := C t /\ y <= b t) in E. 
      assert (IH': forall y, T y -> x <= y \/ y <= x). intros t Tt. apply IH, Tt. 
      destruct (choose _ _ _ IH') as [[s [Ss sx]]|F].
      right. rewrite E, <-sx. eapply eleq_infx; eauto.
      left. rewrite E. apply inf_spec; intros s Ts. now apply b, F.
-   - assert (IH': forall a, T a -> y <= a \/ a <= y). intros a A. specialize (IH _ A _ Sy). tauto. 
+   - assert (IH': forall a, T a -> y <= a \/ a <= y). intros a A. specialize (IH _ A _ Hy). tauto. 
      destruct (choose _ _ _ IH') as [[s [Ss sx]]|F].
      left. rewrite <-sx. now apply leq_infx.
      right. apply inf_spec; intros t Tt. now apply F. 
@@ -677,7 +688,7 @@ Section s.
    apply antisym.
    transitivity (t (cup (t' x) (t' y))).
    apply t. apply cup_leq; apply id_t'. 
-   destruct (S_linear (St' x) (St' y)) as [xy|yx].
+   destruct (C_linear (Ct' x) (Ct' y)) as [xy|yx].
    transitivity (t (t' y)). apply t. apply cup_spec. now split.
    rewrite <-tt', (tt_t b y). apply cup_r. 
    transitivity (t (t' x)). apply t. apply cup_spec. now split.
