@@ -272,7 +272,7 @@ let apply rname mode goal =
             (* second subgoal (symmetry argument) *)               
             | _ -> 
                let p' =
-                 mkProd (Context.nameR rname (* (Names.Id.of_string "R") *), s,
+                 mkProd (EConstr.nameR rname (* (Names.Id.of_string "R") *), s,
                          mkArrowR (g true 1 mkRel) (g false 2 mkRel))
                in
                (* debug p'; *)
