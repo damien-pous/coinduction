@@ -1,6 +1,6 @@
 opam-version: "2.0"
 maintainer: "damien.pous@ens-lyon.fr"
-version: "8.19.dev"
+version: "8.20.dev"
 
 homepage: "https://github.com/damien-pous/coinduction"
 dev-repo: "git+https://github.com/damien-pous/coinduction.git"
@@ -19,7 +19,7 @@ build: [
 ]
 install: [make "install"]
 depends: [
-  "coq" {>= "8.19"}
+  "coq" {>= "8.20"}
 ]
 
 tags: [
