@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - 8.20
   pull_request:
     branches:
       - '**'
@@ -16,17 +15,17 @@ jobs:
     strategy:
       matrix:
         image:
-          - 'coqorg/coq:dev'
-          - 'coqorg/coq:8.20'
+          - 'rocq/rocq-prover:dev'
+          - 'rocq/rocq-prover:9.0.0'
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
-      - uses: coq-community/docker-coq-action@v1
+      - uses: rocq-community/docker-coq-action@v1
         with:
-          opam_file: 'coq-coinduction.opam'
+          opam_file: 'rocq-coinduction.opam'
           custom_image: ${{ matrix.image }}
 
 
 # See also:
-# https://github.com/coq-community/docker-coq-action#readme
+# https://github.com/rocq-community/docker-coq-action#readme
 # https://github.com/erikmd/docker-coq-github-action-demo

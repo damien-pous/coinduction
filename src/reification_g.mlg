@@ -3,7 +3,7 @@
  *)
   
 
-DECLARE PLUGIN "coq-coinduction.plugin"
+DECLARE PLUGIN "rocq-coinduction.plugin"
 
 {
 

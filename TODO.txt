@@ -2,8 +2,3 @@ understand slowness of setoid_rewrite with subrelations
 
 derive [mon X] as a sublattice of [X -> X]
 
-
-# which branches compile on various coq versions:
-coq.8.16  v1.6 8.16=8.17 
-coq.8.17  v1.6 8.16=8.17
-coq.dev                  master

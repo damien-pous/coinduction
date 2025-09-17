@@ -36,7 +36,7 @@ Arguments ABS _ _: clear implicits.
 (** non-dependent case *)
 Notation ABS' B Q := (ABS B (fun _ => Q)).
 
-(** Coq corresponding relation types,
+(** Rocq corresponding relation types,
     the [K] argument of [REL'] is mostly instantiated with [Prop], as in [REL] below *)
 Fixpoint REL' A K :=
   match A with
@@ -359,7 +359,7 @@ Register reification.ptower      as coinduction.ptower.
 Register reification.by_symmetry as coinduction.by_symmetry.
 
 (** loading the OCaml plugin  *)
-Declare ML Module "coq-coinduction.plugin". 
+Declare ML Module "rocq-coinduction.plugin". 
 
 (** ** starting a proof by (enhanced) coinduction *)
 (** when the goal is of the shape

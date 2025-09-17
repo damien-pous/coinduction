@@ -9,7 +9,7 @@
 
 Require Export lattice.
 Require tower.          (* for the alternative definition of the companion *)
-Require Classical.      (* only for distributivity of the companion *)
+From Stdlib Require Classical.      (* only for distributivity of the companion *)
 Set Implicit Arguments.
 
 (** * Knaster-Tarski and compatibility  *)

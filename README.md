@@ -17,7 +17,7 @@ It contains:
  - powerful symmetry arguments
  - compatibility and respectfulness
 
-Examples on how to use the library may be found in the associated coq-coinduction-examples package: 
+Examples on how to use the library may be found in the associated rocq-coinduction-examples package: 
  - a formalisation of Hur et al's toy example on divergence 
  - a formalisation of Rutten's stream calculus
  - a formalisation of Milner's calculus of communicating systems (CCS)
@@ -36,10 +36,10 @@ Examples on how to use the library may be found in the associated coq-coinductio
 
 - Author(s):
   - Damien Pous (initial)
-- Coq-community maintainer(s):
+- Rocq-community maintainer(s):
   - Damien Pous ([**@damien-pous**](https://github.com/damien-pous))
 - License: [GNU LGPL3+]
-- Coq namespace: `Coinduction`
+- Rocq namespace: `Coinduction`
 - Related publication(s):
   - [Coinduction All the Way Up](https://hal.archives-ouvertes.fr/hal-01259622) doi:[10.1145/2933575.2934564](http://dx.doi.org/10.1145/2933575.2934564)
 
@@ -49,8 +49,8 @@ The easiest way to install the latest released version of Coinduction
 is via [OPAM](https://opam.ocaml.org/doc/Install.html):
 
 ```shell
-opam repo add coq-released https://coq.inria.fr/opam/released
-opam install coq-coinduction
+opam repo add rocq-released https://rocq-prover.org/opam/released
+opam install rocq-coinduction
 ```
 
 To instead build and install manually, do:
@@ -64,6 +64,8 @@ make install
 
 ## Compatibility
 
+- versions v1.21 compiles with Rocq 9.0 without transition packages
+- versions v1.20 compiles with Coq 8.20 and Rocq 9.0 with transition packages
 - versions v1.6, v1.7 and v1.8 all compile with Coq 8.16.1, 8.17.1 and 8.18.0
 - v1.7 is feature equivalent but not backward-compatible with v1.6
 - the master branch of this git repository should compile with Coq master

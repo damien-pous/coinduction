@@ -19,7 +19,8 @@ build: [
 ]
 install: [make "install"]
 depends: [
-  "coq" {>= "8.20"}
+  "rocq-prover" {>= "9.0.0"}
+  "rocq-stdlib"
 ]
 
 tags: [

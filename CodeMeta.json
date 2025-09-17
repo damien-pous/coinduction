@@ -26,7 +26,6 @@ This library provides a formalisation on enhancements based on the companion, as
 	"up to techniques",
 	"companion",
 	"bisimilarity",
-        "Coq",
         "Rocq"
     ],
     "license": "GNU LGPL",

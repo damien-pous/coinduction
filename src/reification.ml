@@ -6,12 +6,12 @@ open Constr
 open EConstr
 open Proofview
 
-(* raise an error in Coq *)
+(* raise an error in Rocq *)
 let error s = Printf.kprintf (fun s -> CErrors.user_err (Pp.str s)) ("[coinduction] "^^s)
 
-(* access to Coq constants *)
+(* access to Rocq constants *)
 let get_const s = 
-  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Global.env ()) (Coqlib.lib_ref s)))
+  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Global.env ()) (Rocqlib.lib_ref s)))
 
 (* make an application using a lazy value *)
 let force_app f = fun x -> mkApp (Lazy.force f,x)
@@ -28,15 +28,15 @@ let typecheck t =
 let typecheck_and_apply t = tclTHEN (typecheck t) (Tactics.apply t)
 let typecheck_and_eapply t = tclTHEN (typecheck t) (Tactics.eapply t)
 
-(* creating OCaml functions from Coq ones *)
+(* creating OCaml functions from Rocq ones *)
 let get_fun_1 s = let v = get_const s in fun x -> force_app v [|x|]
 let get_fun_2 s = let v = get_const s in fun x y -> force_app v [|x;y|]
 (* let get_fun_3 s = let v = get_const s in fun x y z -> force_app v [|x;y;z|] *)
 let get_fun_4 s = let v = get_const s in fun x y z t -> force_app v [|x;y;z;t|]
 let get_fun_5 s = let v = get_const s in fun x y z t u -> force_app v [|x;y;z;t;u|]
 
-(* Coq constants *)
-module Coq = struct
+(* Rocq constants *)
+module Rocq = struct
   let and_    = get_const "core.and.type"
   let pair    = get_fun_4 "core.prod.intro"
 end
@@ -72,7 +72,7 @@ end
    [mode] is either
    - `PTower(n)
    - `By_symmetry
-   In first case, [n] is the number of hypotheses to exploit (represented as a Coq constr of type [nat]).
+   In first case, [n] is the number of hypotheses to exploit (represented as a Rocq constr of type [nat]).
  *)
   
 let apply rname mode goal =
@@ -150,11 +150,11 @@ let apply rname mode goal =
         mkLambda(i,w,x),
         (fun v l r -> mkProd(i,w,g v (l+1) r)))
     (* conjunction *)
-    | App(c,[|p1;p2|]) when c=Lazy.force Coq.and_ ->
+    | App(c,[|p1;p2|]) when c=Lazy.force Rocq.and_ ->
        let (c1,x1,g1) = parse p1 in
        let (c2,x2,g2) = parse p2 in
        (Cnd.cnj c1 c2,
-        Coq.pair (Cnd.fT a c1) (Cnd.fT a c2) x1 x2,
+        Rocq.pair (Cnd.fT a c1) (Cnd.fT a c2) x1 x2,
         (fun v l r -> mkApp(c,[|g1 v l r;g2 v l r|])))
     (* elem s l b r ... *)
     | App(c,slbr_) when mode <>`By_symmetry && c=Lazy.force Cnd.elem_ ->

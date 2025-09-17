@@ -1,9 +1,9 @@
--arg -w -arg -undo-batch-mode
+	-arg -w -arg -undo-batch-mode
 
 -R theories/ Coinduction
 -I src/
 
--generate-meta-for-package coq-coinduction
+-generate-meta-for-package rocq-coinduction
 
 theories/lattice.v
 theories/tower.v
