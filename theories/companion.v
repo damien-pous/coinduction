@@ -628,10 +628,8 @@ Section s.
  Corollary leq_t' f: f <= t <-> forall x: Chain, f `x <= `x.
  Proof.
    split.
-   intros E x. rewrite E. now apply t_chain. 
-   intros H. apply Coinduction. intro x. simpl.
-   rewrite (id_t' x) at 1. rewrite (H (chain (tower.Cb (Ct' x)))); cbn.
-   apply b. rewrite <-(tt' x). apply t_T.
+   intros E x. rewrite E. now apply t_chain.
+   intros H x. rewrite (id_t' x) at 1. rewrite tt'. exact (H (chain (Ct' x))).
  Qed.
  
  Lemma Ct x: C (t x).
