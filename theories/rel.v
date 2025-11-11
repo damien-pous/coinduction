@@ -44,7 +44,7 @@ Proof. simpl. firstorder. Qed.
     where "`" is declared at level 10
  *)
 Module Import CoindNotations.
-Notation "` R" := (elem R) (at level 2). 
+Notation "` R" := (elem R) (at level 2, R at level 1, format "` R").
 End CoindNotations.
 
 Section s.
