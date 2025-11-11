@@ -57,6 +57,10 @@ Section s.
   Proof. cbv. firstorder. Qed.
   Lemma inf_closed_transitive: inf_closed (@Transitive A).
   Proof. cbv; firstorder eauto. Qed.
+  Lemma inf_closed_preorder: inf_closed (@PreOrder A).
+  Proof. cbv; firstorder eauto. Qed.
+  Lemma inf_closed_equivalence: inf_closed (@Equivalence A).
+  Proof. cbv; firstorder eauto. Qed.
 
   Context {b: mon (relation A)}.
 
@@ -72,6 +76,10 @@ Section s.
   Proof. apply tower, inf_closed_symmetric. Qed.  
   Proposition Transitive_chain: (forall R: Chain b, Transitive `R -> Transitive (b `R)) -> forall R: Chain b, Transitive `R.
   Proof. apply tower, inf_closed_transitive. Qed.  
+  Proposition PreOrder_chain: (forall R: Chain b, PreOrder `R -> PreOrder (b `R)) -> forall R: Chain b, PreOrder `R.
+  Proof. apply tower, inf_closed_preorder. Qed.
+  Proposition Equivalence_chain: (forall R: Chain b, Equivalence `R -> Equivalence (b `R)) -> forall R: Chain b, Equivalence `R.
+  Proof. apply tower, inf_closed_equivalence. Qed.
 
   (** helpers for proving that n-ary functions preserve chain elements *)
   Fixpoint nfun n :=
@@ -98,6 +106,14 @@ Section s.
     (forall R: Chain b, Proper (respectful_iter n `R `R) f -> Proper (respectful_iter n (b `R) (b `R)) f) ->
     forall R: Chain b, Proper (respectful_iter n `R `R) f.
   Proof. exact (tower (inf_closed_proper n f)). Qed.
+
+  Definition Proper1_chain f:
+    (forall R: Chain b, Proper (`R ==> `R) f -> Proper (b `R ==> b `R) f) ->
+    forall R: Chain b, Proper (`R ==> `R) f := Proper_chain 1 f.
+
+  Definition Proper2_chain f:
+    (forall R: Chain b, Proper (`R ==> `R ==> `R) f -> Proper (b `R ==> b `R ==> b `R) f) ->
+    forall R: Chain b, Proper (`R ==> `R ==> `R) f := Proper_chain 2 f.
 
   (** symmetry arguments *)
 
