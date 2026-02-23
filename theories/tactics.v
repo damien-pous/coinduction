@@ -469,4 +469,27 @@ Tactic Notation "symmetric" :=
 
 (** performing a single step 
     (equivalent to [accumulate _], except that we do not deal with composite candidates and the coinductive proof need not be started) *)
-Ltac step := apply sub_bChain; simpl body.
+Ltac step :=
+match goal with
+| |- context [gfp ?b] => apply (pfp_gfp b)
+| |- context [elem ?R] => apply (b_chain R)
+end.
+
+Ltac step_in h :=
+match type of h with
+| context [gfp ?b] => apply (gfp_pfp b) in h
+end.
+
+Tactic Notation "step" "in" ident(h) := step_in h.
+
+Ltac unstep :=
+match goal with
+| |- context [gfp ?b] => apply (gfp_pfp b)
+end.
+
+Ltac unstep_in h :=
+match type of h with
+| context [gfp ?b] => apply (pfp_gfp b) in h
+end.
+
+Tactic Notation "unstep" "in" ident(h) := unstep_in h.
