@@ -81,10 +81,13 @@ Section s.
  (** [gfp] is below all elements of the chain (by definition) *)
  Lemma gfp_chain (x: Chain): gfp <= x.
  Proof. apply leq_infx, x. Qed.
+
+ Lemma pfp_gfp: b gfp <= gfp.
+ Proof. apply b_chain. Qed.
  
  (** [gfp] is indeed a fixpoint  *)
  Theorem gfp_fp: b gfp == gfp.
- Proof. apply antisym. apply b_chain. apply gfp_pfp. Qed.
+ Proof. apply antisym. apply pfp_gfp. apply gfp_pfp. Qed.
 
  (** and indeed the largest (post)-fixpoint *)
  Theorem leq_gfp x: x <= b x -> x <= gfp.
