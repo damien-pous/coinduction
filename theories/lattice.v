@@ -351,7 +351,7 @@ Section mon.
    body := fun x => f (g x); 
    Hbody x y H := Hbody f _ _ (Hbody g _ _ H) 
  |}.
- Infix "°" := comp (at level 20, left associativity): lattice.
+ Infix "°" := comp (at level 40, left associativity): lattice.
  
  (** monotone endofunctions form a new complete lattice *)
  #[export] Program Instance CompleteLattice_mon: CompleteLattice mon := {|
@@ -432,7 +432,7 @@ Section mon.
 
 End mon.
 Arguments mon X {L}.
-Infix "°" := comp (at level 20, left associativity): lattice.
+Infix "°" := comp (at level 40, left associativity): lattice.
 Global Opaque cup bot cap top.  (* TODO: check that we still need this *)
 
 (** application as a function [X->X]->X->X is monotone in its two arguments *)
