@@ -1,5 +1,14 @@
+* 06 May 2026: v1.22
+
+ - needs rocq 9.2
+ - composition symbol (°) at level 40 to match other libs
+ - removed warnings and deprecated symbols for rocq 9.2
+ - formatting for `R notation
+ - helpers for PreOrder, Equivalence, Proper1, Proper2
+
 * 18 Sep 2024: v1.21
 
+- compiles up to rocq 9.2
 - Coq -> Rocq
 
 * 18 Sep 2024: v1.20

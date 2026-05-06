@@ -19,7 +19,7 @@ build: [
 ]
 install: [make "install"]
 depends: [
-  "rocq-prover" {>= "9.0.0"}
+  "rocq-prover" {>= "9.2"}
   "rocq-stdlib"
 ]
 
