@@ -20,7 +20,7 @@ Section s1.
  Variable b: mon X.
 
  (** ** compatible functions *)
- Notation compat f := (f ° b <= b ° f) (only parsing).
+ Abbreviation compat f := (f ° b <= b ° f) (only parsing).
  
  (** compositionality properties of compatibility *)
  Lemma compat_id: compat id.
@@ -128,7 +128,7 @@ Section s1.
  Proof. now rewrite <-id_t. Qed.
  
 End s1.
-Notation compat b f := (f ° b <= b ° f) (only parsing).
+Abbreviation compat b f := (f ° b <= b ° f) (only parsing).
 #[export] Typeclasses Opaque t.
 Global Opaque t.
 
@@ -154,9 +154,9 @@ Section s2.
      [b' = b ° t] rather than just [b].
     The following proposition (Equation 11) shows that we would not get
     anything new by iterating this idea. *)
- Notation bt := (bt b).
- Notation t' := (t bt).
- Notation t := (t b).
+ Abbreviation bt := (bt b).
+ Abbreviation t' := (t bt).
+ Abbreviation t := (t b).
  Proposition stagnate_t: t == t'.
  Proof.
    unfold bt.
@@ -213,8 +213,8 @@ Section s3.
  (** [T] is the companion of [B] *)
  Definition T := t B.
  Definition bT f := comp b (T f).
- Notation t := (t b).
- Notation bt := (bt b).
+ Abbreviation t := (t b).
+ Abbreviation bt := (bt b).
 
  (** corresponding second-order coinduction principle *)
  Corollary Coinduction f: f ° b <= bT f -> f <= t.
@@ -361,11 +361,11 @@ Section symmetry.
  Context {b s: mon X}.
  Class Sym_from := sym_from: b == (cap s (i ° s ° i)).
  Context {H: Sym_from}.
- Notation B := (B b).
- Notation T := (T b).
- Notation t := (t b).
- Notation bt := (bt b).
- Notation bT := (bT b).
+ Abbreviation B := (B b).
+ Abbreviation T := (T b).
+ Abbreviation t := (t b).
+ Abbreviation bt := (bt b).
+ Abbreviation bT := (bT b).
 
  (** [i] is compatible  *)
  Lemma compat_invol: compat b i.
@@ -426,10 +426,10 @@ Section proof_system.
  Context {X} {L: CompleteLattice X}.
  
  Variable b: mon X.
- Notation B := (B b).
- Notation T := (T b).
- Notation t := (t b).
- Notation bt := (bt b).
+ Abbreviation B := (B b).
+ Abbreviation T := (T b).
+ Abbreviation t := (t b).
+ Abbreviation bt := (bt b).
 
  Lemma rule_init y: y <= t bot -> y <= gfp b.
  Proof. now intro. Qed.
@@ -453,13 +453,13 @@ Section s.
  Context {X} {L: CompleteLattice X}.
 
  Variable b: mon X. 
- Notation b' := (cap b id).
- Notation t' := (t b').
- Notation B' := (B b').
- Notation T' := (T b').
- Notation B := (B b).
- Notation T := (T b).
- Notation t := (t b).
+ Abbreviation b' := (cap b id).
+ Abbreviation t' := (t b').
+ Abbreviation B' := (B b').
+ Abbreviation T' := (T b').
+ Abbreviation B := (B b).
+ Abbreviation T := (T b).
+ Abbreviation t := (t b).
  
  Lemma b_b't: b <= b' ° t.
  Proof. 
@@ -548,9 +548,9 @@ Section s.
  Qed.
 
  Variable b: mon X.
- Notation t := (t b).
- Notation bt := (bt b).
- Notation G' := (G bt).
+ Abbreviation t := (t b).
+ Abbreviation bt := (bt b).
+ Abbreviation G' := (G bt).
  
  (** Theorem 10.1 *)
  Theorem G_bt: G' == bt.
@@ -581,9 +581,9 @@ Import tower.
 Section s.
  Context {X} {L: CompleteLattice X}. 
  Variable b: mon X.
- Notation t := (t b). 
- Notation C := (C b).
- Notation Chain := (Chain b).
+ Abbreviation t := (t b). 
+ Abbreviation C := (C b).
+ Abbreviation Chain := (Chain b).
  Notation "` x" := (elem x) (at level 2).
 
  (** the greatest fixpoints as defined here an in [tower] necessarily coincide *)

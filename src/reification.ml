@@ -7,7 +7,7 @@ open EConstr
 open Proofview
 
 (* raise an error in Rocq *)
-let error s = Printf.kprintf (fun s -> CErrors.user_err (Pp.str s)) ("[coinduction] "^^s)
+let error s = Printf.ksprintf (fun s -> CErrors.user_err (Pp.str s)) ("[coinduction] "^^s)
 
 (* access to Rocq constants *)
 let get_const s = 
@@ -19,8 +19,8 @@ let force_app f = fun x -> mkApp (Lazy.force f,x)
 (* typecheck a term and propagate universe constraints *)
 let typecheck t =
   Goal.enter (fun goal ->
-      let env = Tacmach.pf_env goal in
-      let sigma = Tacmach.project goal in
+      let env = Proofview.Goal.env goal in
+      let sigma = Proofview.Goal.sigma goal in
       let sigma, _ = Typing.solve_evars env sigma t in
       Unsafe.tclEVARS sigma)
 
@@ -83,8 +83,8 @@ let apply rname mode goal =
       [rel] is a relation of type [s]
       [a] is the arity corresponding to [s]  
     *)
-  let env = Tacmach.pf_env goal in
-  let sigma = Tacmach.project goal in
+  let env = Proofview.Goal.env goal in
+  let sigma = Proofview.Goal.sigma goal in
   let debug c = ignore (Feedback.msg_warning (Printer.pr_leconstr_env env sigma c)) in
   let convertible = Reductionops.is_conv env sigma in
   let _ = debug in
@@ -219,7 +219,7 @@ let apply rname mode goal =
   (* main entry point *)
   match mode with
   | `PTower i ->
-     let (cs,c,x,g) = parse_acc i (Tacmach.pf_concl goal) in
+     let (cs,c,x,g) = parse_acc i (Proofview.Goal.concl goal) in
      (* here we first revert R and re-introduce it afterwards in order to keep the same name for the candidate.
         we do so in OCaml rather than in Ltac: this makes it possible to avoid the mess with de Bruijn indices *)
      (* debug (Cnd.ptower a b cs c x); *)
@@ -231,7 +231,7 @@ let apply rname mode goal =
        ))
      
   | `By_symmetry ->
-     let (c,x,g) = parse (Tacmach.pf_concl goal) in
+     let (c,x,g) = parse (Proofview.Goal.concl goal) in
      (* several catches here...
 
         1. We would like to do just
@@ -259,8 +259,8 @@ let apply rname mode goal =
      tclTHEN (Tactics.convert_concl ~cast:false ~check:true p DEFAULTcast)
        (tclTHEN (typecheck_and_eapply (Cnd.by_symmetry a' c x b))
        (Goal.enter (fun goal ->
-            let sigma = Tacmach.project goal in
-            match kind sigma (Tacmach.pf_concl goal) with
+            let sigma = Proofview.Goal.sigma goal in
+            match kind sigma (Proofview.Goal.concl goal) with
             (* first subgoal (typeclass resolution)*)
             | App(c,_) when c=Lazy.force Cnd.symmetrical ->
                Class_tactics.typeclasses_eauto [Class_tactics.typeclasses_db] ~depth:(Some 5)

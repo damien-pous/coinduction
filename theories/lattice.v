@@ -37,8 +37,8 @@ Declare Scope lattice.
 Open Scope lattice.
 Infix "==" := weq (at level 70): lattice.
 Infix "<=" := leq: lattice.
-Notation sup P := (sup' P id).
-Notation inf P := (inf' P id).
+Abbreviation sup P := (sup' P id).
+Abbreviation inf P := (inf' P id).
 
 Section s.
  Context {X} {L: CompleteLattice X}.
@@ -351,7 +351,7 @@ Section mon.
    body := fun x => f (g x); 
    Hbody x y H := Hbody f _ _ (Hbody g _ _ H) 
  |}.
- Infix "°" := comp (at level 20): lattice.
+ Infix "°" := comp (at level 20, left associativity): lattice.
  
  (** monotone endofunctions form a new complete lattice *)
  #[export] Program Instance CompleteLattice_mon: CompleteLattice mon := {|
@@ -432,7 +432,7 @@ Section mon.
 
 End mon.
 Arguments mon X {L}.
-Infix "°" := comp (at level 20): lattice.
+Infix "°" := comp (at level 20, left associativity): lattice.
 Global Opaque cup bot cap top.  (* TODO: check that we still need this *)
 
 (** application as a function [X->X]->X->X is monotone in its two arguments *)

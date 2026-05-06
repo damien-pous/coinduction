@@ -17,7 +17,7 @@ Section s.
     Restart.
     coinduction R _.
   Abort.
-  Goal 5 ~ 6 /\ 7 ~ 8.
+  Goal (5 ~ 6) /\ (7 ~ 8).
     coinduction R H.
     Restart.
     coinduction R [H H'].
@@ -28,7 +28,7 @@ Section s.
   Goal forall n m (k: n=m), n+n ~ m+m.
     coinduction R H.
   Abort.
-  Goal forall n m (k: n=m), n+n ~ m+m /\ forall k, n+k ~ k+m.
+  Goal forall n m (k: n=m), (n+n ~ m+m) /\ forall k, n+k ~ k+m.
     coinduction R H.
   Abort.
   Goal gfp b 5 6 /\ gfp c 7 8.
@@ -47,7 +47,7 @@ Section s.
   Abort.
 
   
-  Notation b' := (cap s (converse ° s ° converse)).
+  Abbreviation b' := (cap s (converse ° s ° converse)).
   Goal forall n m, gfp b' n m.
   Proof.
     coinduction R H.

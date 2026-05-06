@@ -34,7 +34,7 @@ Inductive Arity :=
 | ABS(B: Type)(Q: B -> Arity).
 Arguments ABS _ _: clear implicits.
 (** non-dependent case *)
-Notation ABS' B Q := (ABS B (fun _ => Q)).
+Abbreviation ABS' B Q := (ABS B (fun _ => Q)).
 
 (** Rocq corresponding relation types,
     the [K] argument of [REL'] is mostly instantiated with [Prop], as in [REL] below *)
@@ -43,7 +43,7 @@ Fixpoint REL' A K :=
   | PRP => K
   | ABS B Q => forall b, REL' (Q b) K
   end.
-Notation REL A := (REL' A Prop).
+Abbreviation REL A := (REL' A Prop).
 
 (** corresponding complete lattice structure *)
 #[local] Instance CompleteLatticeREL A: CompleteLattice (REL A).
