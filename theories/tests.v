@@ -13,30 +13,39 @@ Section s.
   Notation "x ≡ y" := (` _ x y) (at level 80).
   Notation "x [≡] y" := (b ` _ x y) (at level 80).
   Goal 5 ~ 6.
+  Proof.
     coinduction R H.
     Restart.
+  Proof.
     coinduction R _.
   Abort.
   Goal (5 ~ 6) /\ (7 ~ 8).
+  Proof.
     coinduction R H.
     Restart.
+  Proof.
     coinduction R [H H'].
   Abort.
   Goal forall n, n+n ~ n+n.
+  Proof.
     coinduction R H.
   Abort.
   Goal forall n m (k: n=m), n+n ~ m+m.
+  Proof.
     coinduction R H.
   Abort.
   Goal forall n m (k: n=m), (n+n ~ m+m) /\ forall k, n+k ~ k+m.
+  Proof.
     coinduction R H.
   Abort.
   Goal gfp b 5 6 /\ gfp c 7 8.
+  Proof.
     Fail coinduction R H.
   Abort.
 
   
   Goal 5 ~ 6.
+  Proof.
     coinduction R H.
     cut (4 ≡[R] 5). admit.
     accumulate H'.
@@ -68,6 +77,7 @@ Section s.
     Fail default_sym_tac.
   Abort.  
   Goal forall n m, (forall a, gfp b' (n+a) (a+m)) /\ (forall b, gfp b' (b+m) (n+b)).
+  Proof.
     coinduction R H.
     symmetric. 
   Abort.
