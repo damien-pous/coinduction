@@ -340,10 +340,12 @@ End reification.
 (** * Exported tactics *)
 
 (** registering constants required in the OCaml plugin  *)
+Register mon                     as coinduction.mon.
 Register body                    as coinduction.body.
 Register elem                    as coinduction.elem.
 Register Chain                   as coinduction.Chain.
 Register gfp                     as coinduction.gfp.
+Register gfp_prop                as coinduction.gfp_prop.
 Register Symmetrical             as coinduction.Symmetrical.
 Register PRP                     as coinduction.PRP.
 Register ABS                     as coinduction.ABS.
@@ -389,7 +391,10 @@ Declare ML Module "rocq-coinduction.plugin".
     (The last step could be implemented with [simpl reification.pT], but this would result in unwanted additional simplifications, and this resets names of bound variables in a very bad way. This is why we spend time in OCaml to reconstruct a type for the new goal by following syntactically the initial one.)
   *)
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
-  apply gfp_prop; intro R; apply_ptower R O; intros H.
+  abstract_gfp; intro R; apply_ptower R O; intros H.
+
+Tactic Notation "coinduction" ident(R) simple_intropattern(H) "using" constr(b) :=
+  abstract_gfp b; intro R; apply_ptower R O; intros H.
 
 (** ** accumulating knowledge in a proof by enhanced coinduction *)
 

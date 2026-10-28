@@ -43,12 +43,14 @@ end
 
 (* Coinduction constants *)
 module Cnd = struct
+  let mon         = get_const "coinduction.mon"
   let body_       = get_const "coinduction.body"
   let body        = get_fun_4 "coinduction.body"            
   let elem_       = get_const "coinduction.elem"
   let elem        = get_fun_4 "coinduction.elem"
   let chain       = get_const "coinduction.Chain"
   let gfp         = get_const "coinduction.gfp"
+  let gfp_prop    = get_fun_4 "coinduction.gfp_prop"
   let symmetrical = get_const "coinduction.Symmetrical"
   let ar_prp      = get_const "coinduction.PRP"
   let ar_abs      = get_fun_2 "coinduction.ABS"
@@ -74,7 +76,7 @@ end
    - `By_symmetry
    In first case, [n] is the number of hypotheses to exploit (represented as a Rocq constr of type [nat]).
  *)
-  
+
 let apply rname mode goal =
    (* first we determine the following values: 
       [s] is the type of elements this function operates on
@@ -134,8 +136,8 @@ let apply rname mode goal =
      - [c] is [abs (fun x => abs (fun y => abs (fun _: P x y => cnj hol (abs (fun z => hol)))))]
      - [x] is [fun x y H => ((u,(v,tt)), fun z => (p,(q,tt)))]
 
-     the OCaml type of [g] is a bit complicated: [bool -> int -> (int -> constr) -> constr]
-     intuitively, [g true i REL'] should be [e] where [REL] has beend replaced by [REL']
+     the OCaml type of [q] is a bit complicated: [bool -> int -> (int -> constr) -> constr]
+     intuitively, [q true i REL'] should be [e] where [REL] has beend replaced by [REL']
      the integers are there to deal with de Bruijn indices:
      - in the `PTower case, [REL'] will constructed from the context so that integers will just be ignored 
      - in the `By_symmetry case, [REL'] involves a [mkRel] whose index depends on the depth at wich it gets replaced; [i] is used to record the current depth 
@@ -177,7 +179,7 @@ let apply rname mode goal =
     (* gfp b (should be dealt with beforehand) *)
     | App(c,_) when c = Lazy.force Cnd.gfp -> error "only one coinductive predicate is allowed"       
     (* other cases are not handled *)
-    | _ -> error "unsupported subterm"
+    | _ -> error "coinduction tactics cannot be used on such a goal"
   in
 
   (* extension of the above function for `Accumulate(n):
@@ -278,3 +280,46 @@ let apply rname mode goal =
                (* debug p'; *)
                Tactics.convert_concl ~cast:false ~check:true p' DEFAULTcast
        )))
+
+(* abstract positive occurrences of [gfp b] and apply [gfp_prop]
+   [b] is guessed through the first encounter of a gfp is [b=None]
+   other occurrences of gfps are ignored *)
+let abstract b goal =
+  let env = Proofview.Goal.env goal in
+  let sigma = Proofview.Goal.sigma goal in
+  let debug c = ignore (Feedback.msg_warning (Printer.pr_leconstr_env env sigma c)) in
+  let convertible = Reductionops.is_conv env sigma in
+  let _ = debug in
+  let rec parse l b e =
+    match kind sigma e with
+    (* both universal quantification and implication *)
+    | Prod(i,w,q) ->
+       let b,q = parse (l+1) b q in b,mkProd(i,w,q)
+    (* conjunction *)
+    | App(c,[|p1;p2|]) when c=Lazy.force Rocq.and_ ->
+       let b,p1 = parse l b p1 in
+       let b,p2 = parse l b p2 in
+       b,mkApp(c,[|p1;p2|])
+    (* gfp x l b ... *)
+    | App(c,xlb_) when c=Lazy.force Cnd.gfp ->
+       (match Array.to_list xlb_ with
+        | _::_::b'::xs ->
+           if match b with None -> false | Some b -> not (convertible b b') then
+             b, e
+           else
+             Some b', mkApp(mkRel l, Array.of_list xs)
+        | _ -> b, e)
+    (* other cases could be left untouched but are not dealt with the other tactics anyways *)
+    (* | _ -> b,e *)
+    | _ -> error "coinduction tactics cannot be used on such a goal"
+  in
+  match parse 1 b (Proofview.Goal.concl goal) with
+  | None,_ -> error "did not find a gfp and no function specified"
+  | Some b,e ->
+     let _,btype = Typing.type_of env sigma b in  
+     let (x,l) = match kind sigma btype with
+       | App(c,[|x;l|]) when c=Lazy.force Cnd.mon -> (x,l)
+       | _ -> assert false
+     in
+     typecheck_and_apply (Cnd.gfp_prop x l b (mkLambda(anonR,x,e)))
+

@@ -40,7 +40,7 @@ Section s.
   Abort.
   Goal gfp b 5 6 /\ gfp c 7 8.
   Proof.
-    Fail coinduction R H.
+    Fail coinduction R H.       (* duly failing *)
   Abort.
 
   
@@ -131,7 +131,60 @@ Goal forall (R : Chain b) x, elem R x -> elem R x.
   intros.
   step.
   (* Note: we cannot unstep, we cannot step in the hypothesis *)
-  Fail unstep. 
+  Fail unstep.                  (* duly failing *)
 Abort.
 
 End u.
+
+
+(** gfp in hypotheses  *)
+Section u.
+
+Variable X : Type.
+Variable b : mon (X -> Prop).
+
+Goal forall x, gfp b x -> gfp b x.
+  intro.
+  coinduction P H.              (* note how the gfp is kept in the hypothesis *)
+Abort.
+
+End u.
+
+(** multiple gfps  *)
+Section m.
+
+Variable X : Type.
+Variable b c: mon (X -> Prop).
+
+Goal forall x, gfp b x -> gfp c x.
+  intro.
+  coinduction P H.  
+Abort.
+
+Goal forall x, gfp b x -> gfp c x.
+  intro.
+  (* the clause "using" makes it possible to specify the desired gfp,
+     however, there is at most one valid candidate with the currently allowed syntax *)
+  coinduction P H using c.  
+Abort.
+
+Goal forall x, gfp b x -> gfp c x.
+  intro.
+  Fail coinduction P H using b. (* duly failing *)
+Abort.
+
+Goal forall x, gfp b x /\ True.
+  intro.
+  (* could succeed at some point *)
+  Fail coinduction P H.
+Abort.
+
+Goal forall x, gfp b x /\ gfp c x.
+  intro.
+  (* below could succeed at some point *)
+  Fail coinduction P H.
+  Fail coinduction P H using b.
+  Fail coinduction P H using c.
+Abort.
+
+End m.

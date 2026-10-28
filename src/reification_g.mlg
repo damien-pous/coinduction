@@ -18,3 +18,8 @@ TACTIC EXTEND coinduction_reify
 | [ "apply_by_symmetry" ident(r) ] -> { Goal.enter (apply r `By_symmetry) }
 | [ "apply_ptower" ident(r) constr(n) ] -> { Goal.enter (apply r (`PTower(n))) }
 END
+
+TACTIC EXTEND coinduction_abstract
+| [ "abstract_gfp" ] -> { Goal.enter (abstract None) }
+| [ "abstract_gfp" constr(b) ] -> { Goal.enter (abstract (Some b)) }
+END
