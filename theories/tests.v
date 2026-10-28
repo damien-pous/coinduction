@@ -111,3 +111,27 @@ Section h.
     accumulate H'. 
   Abort.
 End h.
+
+(** step/unstep  *)
+Section u.
+
+Variable X : Type.
+Variable b : mon (X -> Prop).
+
+Goal forall x, gfp b x -> gfp b x.
+  intros.
+  step.
+  unstep.
+  step in H.
+  unstep in H.
+  easy.
+Qed.
+
+Goal forall (R : Chain b) x, elem R x -> elem R x.
+  intros.
+  step.
+  (* Note: we cannot unstep, we cannot step in the hypothesis *)
+  Fail unstep. 
+Abort.
+
+End u.
