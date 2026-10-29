@@ -7,5 +7,5 @@ val apply :
   Proofview.Goal.t -> unit Proofview.tactic
 
 val abstract :
-  EConstr.t option ->
+  (EConstr.t * EConstr.t) option ->
   Proofview.Goal.t -> unit Proofview.tactic

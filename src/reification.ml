@@ -7,7 +7,8 @@ open EConstr
 open Proofview
 
 (* raise an error in Rocq *)
-let error s = Printf.ksprintf (fun s -> CErrors.user_err (Pp.str s)) ("[coinduction] "^^s)
+let error s = Format.ksprintf (fun s -> CErrors.user_err (Pp.str s)) ("[coinduction] "^^s)
+let error' s env sigma t = CErrors.user_err Pp.(str s ++ Printer.pr_econstr_env env sigma t)
 
 (* access to Rocq constants *)
 let get_const s = 
@@ -125,12 +126,12 @@ let apply rname mode goal =
      
      such a type [e] is interpreted as a bisimulation candidate
 
-     returns a tuple [(r,c,x,q)] where
+     returns a tuple [(c,x,q)] where
      - [c] has type [reification.T] and is the skeleton of the bisimulation candidate
      - [x] has type [reification.fT a c] and are the elements related by the bisimulation candidate
      - [q] is a function making it possible to reconstruct a nice type for the goal resulting from the application of the considered lemma.
      
-     the key invariant is that [e] should be convertible to [pT a c r x]
+     the key invariant is that [e] should be convertible to [pT a c x]
 
      in the above example,
      - [c] is [abs (fun x => abs (fun y => abs (fun _: P x y => cnj hol (abs (fun z => hol)))))]
@@ -179,7 +180,7 @@ let apply rname mode goal =
     (* gfp b (should be dealt with beforehand) *)
     | App(c,_) when c = Lazy.force Cnd.gfp -> error "only one coinductive predicate is allowed"       
     (* other cases are not handled *)
-    | _ -> error "coinduction tactics cannot be used on such a goal"
+    | _ -> error' "coinduction tactics cannot be used on such a goal: " env sigma e
   in
 
   (* extension of the above function for `Accumulate(n):
@@ -281,41 +282,44 @@ let apply rname mode goal =
                Tactics.convert_concl ~cast:false ~check:true p' DEFAULTcast
        )))
 
-(* abstract positive occurrences of [gfp b] and apply [gfp_prop]
-   [b] is guessed through the first encounter of a gfp is [b=None]
-   other occurrences of gfps are ignored *)
-let abstract b goal =
+(* abstract positive occurrences of [y=gfp b] and apply [gfp_prop]
+   if yb=None then [b] is guessed through the first encounter of [gfp] *)
+let abstract yb goal =
   let env = Proofview.Goal.env goal in
   let sigma = Proofview.Goal.sigma goal in
   let debug c = ignore (Feedback.msg_warning (Printer.pr_leconstr_env env sigma c)) in
   let convertible = Reductionops.is_conv env sigma in
   let _ = debug in
-  let rec parse l b e =
+  let yb = match yb with None -> None | Some(y,b) -> Some(Some y,b) in
+  let rec parse l yb e =
     match kind sigma e with
     (* both universal quantification and implication *)
     | Prod(i,w,q) ->
-       let b,q = parse (l+1) b q in b,mkProd(i,w,q)
+       let yb,q = parse (l+1) yb q in yb,mkProd(i,w,q)
     (* conjunction *)
     | App(c,[|p1;p2|]) when c=Lazy.force Rocq.and_ ->
-       let b,p1 = parse l b p1 in
-       let b,p2 = parse l b p2 in
-       b,mkApp(c,[|p1;p2|])
+       let yb,p1 = parse l yb p1 in
+       let yb,p2 = parse l yb p2 in
+       yb,mkApp(c,[|p1;p2|])
     (* gfp x l b ... *)
     | App(c,xlb_) when c=Lazy.force Cnd.gfp ->
        (match Array.to_list xlb_ with
-        | _::_::b'::xs ->
-           if match b with None -> false | Some b -> not (convertible b b') then
-             b, e
-           else
-             Some b', mkApp(mkRel l, Array.of_list xs)
-        | _ -> b, e)
-    (* other cases could be left untouched but are not dealt with the other tactics anyways *)
-    (* | _ -> b,e *)
-    | _ -> error "coinduction tactics cannot be used on such a goal"
+        | _::_::b'::args ->
+           (match yb with
+            | None -> Some(None,b')
+            | Some (_,b) when convertible b b' -> yb
+            | _ -> error "coinduction cannot be applied to several gfps at once"),
+           mkApp(mkRel l, Array.of_list args)
+        | _ -> assert false)
+    (* y ... *)
+    | App(y',args) when (match yb with Some(Some y,_) -> convertible y y' | _ -> false) ->
+       yb, mkApp(mkRel l, args)
+    (* other cases are invalid *)
+    | _ -> error' "invalid goal for coinduction tactic (or did not recognise gfp - try using \"for\"): " env sigma e
   in
-  match parse 1 b (Proofview.Goal.concl goal) with
+  match parse 1 yb (Proofview.Goal.concl goal) with
   | None,_ -> error "did not find a gfp and no function specified"
-  | Some b,e ->
+  | Some(_,b),e ->
      let _,btype = Typing.type_of env sigma b in  
      let (x,l) = match kind sigma btype with
        | App(c,[|x;l|]) when c=Lazy.force Cnd.mon -> (x,l)

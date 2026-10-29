@@ -40,7 +40,7 @@ Section s.
   Abort.
   Goal gfp b 5 6 /\ gfp c 7 8.
   Proof.
-    Fail coinduction R H.       (* duly failing *)
+    Fail coinduction R H.       (* duly failing: several gfps *)
   Abort.
 
   
@@ -141,50 +141,48 @@ End u.
 Section u.
 
 Variable X : Type.
-Variable b : mon (X -> Prop).
+Variable b c: mon (X -> Prop).
 
 Goal forall x, gfp b x -> gfp b x.
   intro.
   coinduction P H.              (* note how the gfp is kept in the hypothesis *)
 Abort.
 
-End u.
-
-(** multiple gfps  *)
-Section m.
-
-Variable X : Type.
-Variable b c: mon (X -> Prop).
-
 Goal forall x, gfp b x -> gfp c x.
   intro.
   coinduction P H.  
 Abort.
 
-Goal forall x, gfp b x -> gfp c x.
+End u.
+
+(** named gfps  *)
+Section m.
+
+Variable X : Type.
+Variable b c: mon (X -> Prop).
+Definition gfpb := gfp b.
+  
+Goal forall x, gfpb x.
   intro.
-  (* the clause "using" makes it possible to specify the desired gfp,
-     however, there is at most one valid candidate with the currently allowed syntax *)
-  coinduction P H using c.  
+  Fail coinduction P H.         (* duly failing: gfpb not recognised *)
+  coinduction P H for gfpb.
 Abort.
 
-Goal forall x, gfp b x -> gfp c x.
+Goal forall x, gfp b x /\ gfpb x.
   intro.
-  Fail coinduction P H using b. (* duly failing *)
+  Fail coinduction P H.         (* duly failing: gfpb not recognised *)
+  coinduction P H for gfpb.
 Abort.
 
-Goal forall x, gfp b x /\ True.
+Goal forall x, gfpb x /\ gfp c x.
   intro.
-  (* could succeed at some point *)
-  Fail coinduction P H.
+  Fail coinduction P H.          (* duly failing: gfpb not recognised *)
+  Fail coinduction P H for gfpb.     (* duly failing: two gfps) *)
 Abort.
 
-Goal forall x, gfp b x /\ gfp c x.
+Goal forall x, gfpb x /\ True.
   intro.
-  (* below could succeed at some point *)
-  Fail coinduction P H.
-  Fail coinduction P H using b.
-  Fail coinduction P H using c.
+  Fail coinduction P H for gfpb.     (* duly failing: True is not a gfp *)
 Abort.
 
 End m.

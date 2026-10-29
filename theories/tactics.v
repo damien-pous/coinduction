@@ -393,8 +393,28 @@ Declare ML Module "rocq-coinduction.plugin".
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
   abstract_gfp; intro R; apply_ptower R O; intros H.
 
-Tactic Notation "coinduction" ident(R) simple_intropattern(H) "using" constr(b) :=
-  abstract_gfp b; intro R; apply_ptower R O; intros H.
+(** in case [gfp b] is named (eg. Definition x := gfp b), it is not possible to recognise it automatically.
+    In those cases we can use the annotation "for x" *)
+(* the following tactic makes it possible to retrieve [b] out of a defined term [x] convertible to [gfp b] *)
+Definition get_gfp X L b x (e: @gfp X L b = x) := b.
+Arguments get_gfp [_ _ _] _ _.
+Ltac get_gfp x :=
+  (eval unfold get_gfp in (get_gfp x eq_refl))
+(* || fail "did not recognise" x "as a gfp" *).
+
+(* BELOW: example of how to use [get_gfp] *)
+(* Section s. *)
+(*   Context X (L: CompleteLattice X) (b: mon X). *)
+(*   Let x := gfp b. *)
+(*   Goal True. *)
+(*     let c := get_gfp x in set (b' := c). *)
+(*     Fail let c := get_gfp nat in set (b'' := c). *)
+(*   Abort. *)
+(* End s. *)
+    
+Tactic Notation "coinduction" ident(R) simple_intropattern(H) "for" constr(x) :=
+  let b := get_gfp x in
+  abstract_gfp x b; intro R; apply_ptower R O; intros H.
 
 (** ** accumulating knowledge in a proof by enhanced coinduction *)
 
