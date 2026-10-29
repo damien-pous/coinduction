@@ -412,7 +412,7 @@ Ltac get_gfp x :=
 (*   Abort. *)
 (* End s. *)
     
-Tactic Notation "coinduction" ident(R) simple_intropattern(H) "for" constr(x) :=
+Tactic Notation "coinduction" ident(R) simple_intropattern(H) "for" uconstr(x) :=
   let b := get_gfp x in
   abstract_gfp x b; intro R; apply_ptower R O; intros H.
 

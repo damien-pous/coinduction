@@ -119,6 +119,7 @@ Variable X : Type.
 Variable b : mon (X -> Prop).
 
 Goal forall x, gfp b x -> gfp b x.
+Proof.
   intros.
   step.
   unstep.
@@ -128,6 +129,7 @@ Goal forall x, gfp b x -> gfp b x.
 Qed.
 
 Goal forall (R : Chain b) x, elem R x -> elem R x.
+Proof.
   intros.
   step.
   (* Note: we cannot unstep, we cannot step in the hypothesis *)
@@ -144,11 +146,13 @@ Variable X : Type.
 Variable b c: mon (X -> Prop).
 
 Goal forall x, gfp b x -> gfp b x.
+Proof.
   intro.
   coinduction P H.              (* note how the gfp is kept in the hypothesis *)
 Abort.
 
 Goal forall x, gfp b x -> gfp c x.
+Proof.
   intro.
   coinduction P H.  
 Abort.
@@ -163,26 +167,50 @@ Variable b c: mon (X -> Prop).
 Definition gfpb := gfp b.
   
 Goal forall x, gfpb x.
+Proof.
   intro.
   Fail coinduction P H.         (* duly failing: gfpb not recognised *)
   coinduction P H for gfpb.
 Abort.
 
 Goal forall x, gfp b x /\ gfpb x.
+Proof.
   intro.
   Fail coinduction P H.         (* duly failing: gfpb not recognised *)
   coinduction P H for gfpb.
 Abort.
 
 Goal forall x, gfpb x /\ gfp c x.
+Proof.
   intro.
   Fail coinduction P H.          (* duly failing: gfpb not recognised *)
   Fail coinduction P H for gfpb.     (* duly failing: two gfps) *)
 Abort.
 
 Goal forall x, gfpb x /\ True.
+Proof.
   intro.
   Fail coinduction P H for gfpb.     (* duly failing: True is not a gfp *)
 Abort.
 
 End m.
+
+(** parametric named gfps *)
+Section s.  
+  Variable W : Type -> Type.
+  Variable b : forall {X}, mon (W X -> W X -> Prop).  
+  Definition bisim {X} := gfp (@b X).
+
+  Goal forall X t u, @bisim X t u.
+  Proof.
+    intro. coinduction r cih for (@bisim X).
+  Abort.
+
+  Goal forall X t u, @bisim X t u.
+  Proof.
+    intro.
+    Fail coinduction r cih for bisim. (* not yet... *)
+  Abort.
+End s.
+
+  

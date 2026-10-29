@@ -290,7 +290,31 @@ let abstract yb goal =
   let debug c = ignore (Feedback.msg_warning (Printer.pr_leconstr_env env sigma c)) in
   let convertible = Reductionops.is_conv env sigma in
   let _ = debug in
-  let yb = match yb with None -> None | Some(y,b) -> Some(Some y,b) in
+  let yb =
+    match yb with
+    | None -> None
+    | Some(y,b) ->
+       (* if y,b is given, we must compute the arity to detect occurrences later *)
+       let a =
+         let _,ytype = Typing.type_of env sigma y in  
+         let rec arity t =
+           match kind sigma (Reductionops.whd_all env sigma t) with
+           | Sort _ -> 0
+           | Prod(_,_,q) -> 1+arity q
+           | _ -> error "coinductive object must be a n-ary relation"
+         in arity ytype
+       in
+       Some(Some (y,a),b)
+  in
+  let same y a y' args =
+    (* checking whether [y' args] is [y] followed by [a]-many arguments  *)
+    let y' = mkApp(y', Array.sub args 0 (Array.length args - a)) in
+    convertible y y'
+  in
+  let invalid e =
+    error' "invalid goal for coinduction tactic (or did not recognise gfp - try using \"for\"): "
+      env sigma e
+  in
   let rec parse l yb e =
     match kind sigma e with
     (* both universal quantification and implication *)
@@ -312,10 +336,13 @@ let abstract yb goal =
            mkApp(mkRel l, Array.of_list args)
         | _ -> assert false)
     (* y ... *)
-    | App(y',args) when (match yb with Some(Some y,_) -> convertible y y' | _ -> false) ->
-       yb, mkApp(mkRel l, args)
+    | App(y',args) ->
+       (match yb with
+        | Some(Some (y,a),_) when same y a y' args ->
+           yb, mkApp(mkRel l, Array.sub args (Array.length args - a) a)
+        | _ -> invalid e)
     (* other cases are invalid *)
-    | _ -> error' "invalid goal for coinduction tactic (or did not recognise gfp - try using \"for\"): " env sigma e
+    | _ -> invalid e
   in
   match parse 1 yb (Proofview.Goal.concl goal) with
   | None,_ -> error "did not find a gfp and no function specified"
