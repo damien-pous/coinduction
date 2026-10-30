@@ -20,6 +20,6 @@ TACTIC EXTEND coinduction_reify
 END
 
 TACTIC EXTEND coinduction_abstract
-| [ "abstract_gfp" ] -> { Goal.enter (abstract None) }
-| [ "abstract_gfp" constr(x) constr(b) ] -> { Goal.enter (abstract (Some (x,b))) }
+| [ "abstract_gfp_ocaml" ] -> { Goal.enter (abstract None) }
+| [ "abstract_gfp_ocaml" constr(x) constr(b) ] -> { Goal.enter (abstract (Some (x,b))) }
 END

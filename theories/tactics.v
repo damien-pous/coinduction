@@ -375,19 +375,23 @@ Definition get_gfp X L b x (e: @gfp X L b = x) := b.
 Arguments get_gfp [_ _ _] _ _.
 Ltac get_gfp x := eval unfold get_gfp in (get_gfp x eq_refl).
 (** then we can use the ocaml plugin to perform abstraction  *)
-Tactic Notation "abstract_gfp_ocaml" uconstr(x) :=
-  let b := get_gfp x in abstract_gfp x b.
+Tactic Notation "abstract_gfp_ocaml_for" uconstr(x) :=
+  let b := get_gfp x in abstract_gfp_ocaml x b.
 
-(** alternatively, we can perform abstraction through the following elpi tactic *)
+(** alternatively, we can perform abstraction through the following elpi tactic
+    (not preserving bound names, unfortunately) *)
 Definition box_gfp {T} (x: T) := x.
 Elpi Tactic box_gfp.
 Elpi Accumulate File box_gfp.
 Lemma boxed_gfp_prop {X} {L : CompleteLattice X} [b : mon X] (P : X -> Prop):
   (forall x : Chain b, P (elem x)) -> P (box_gfp (gfp b)).
 Proof. exact (gfp_prop P). Qed.
-Tactic Notation "abstract_gfp_elpi" uconstr(x) :=
+Tactic Notation "abstract_gfp_elpi" :=
+  elpi box_gfp; apply boxed_gfp_prop.
+Tactic Notation "abstract_gfp_elpi" "for" uconstr(x) :=
   elpi box_gfp (x); apply boxed_gfp_prop.
-
+Tactic Notation "abstract_gfp_elpi" "arity" int(n) :=
+  elpi box_gfp ltac_int:(n); apply boxed_gfp_prop.
 
 (** ** starting a proof by (enhanced) coinduction *)
 (** when the goal is of the shape
@@ -417,13 +421,21 @@ Tactic Notation "abstract_gfp_elpi" uconstr(x) :=
     (The last step could be implemented with [simpl reification.pT], but this would result in unwanted additional simplifications, and this resets names of bound variables in a very bad way. This is why we spend time in OCaml to reconstruct a type for the new goal by following syntactically the initial one.)
   *)
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
-  abstract_gfp; intro R; apply_ptower R O; intros H.
+  abstract_gfp_elpi; intro R; apply_ptower R O; intros H.
 
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) "for" uconstr(x) :=
-  abstract_gfp_elpi x; intro R; apply_ptower R O; intros H.
+  abstract_gfp_elpi for x; intro R; apply_ptower R O; intros H.
+
+Tactic Notation "coinduction" ident(R) simple_intropattern(H) "arity" int(n) :=
+  (* abstract_gfp_elpi arity n; *) (* TOFIX: how to pass [n] as an argument? *)
+  elpi box_gfp ltac_int:(n); apply boxed_gfp_prop;
+  intro R; apply_ptower R O; intros H. 
+
+Tactic Notation "coinduction'" ident(R) simple_intropattern(H) :=
+  abstract_gfp_ocaml; intro R; apply_ptower R O; intros H.
 
 Tactic Notation "coinduction'" ident(R) simple_intropattern(H) "for" uconstr(x) :=
-  abstract_gfp_ocaml x; intro R; apply_ptower R O; intros H.
+  abstract_gfp_ocaml_for x; intro R; apply_ptower R O; intros H.
 
 (** ** accumulating knowledge in a proof by enhanced coinduction *)
 

@@ -163,18 +163,20 @@ Section m.
 Variable X : Type.
 Variable b c: mon (X -> Prop).
 Let gfpb := gfp b.
-  
 Goal forall x, gfpb x.
 Proof.
   Fail coinduction P H.         (* duly failing: gfpb not recognised *)
   coinduction P H for gfpb.     (* note: bound names are not preserved (elpi-based) *)
   Restart.
-  coinduction' P H for gfpb.     (* note: with the ocaml variant, bound names are preserved *)
+  coinduction P H arity 1.      (* note: bound names are not preserved (elpi-based) *)
+  Restart.
+  coinduction' P H for gfpb.    (* note: with the ocaml variant, bound names are preserved *)
 Abort.
 
 Goal forall x, gfp b x /\ gfpb x.
 Proof.
-  Fail coinduction P H.         (* duly failing: gfpb not recognised *)
+  coinduction P H.
+  Restart.
   coinduction P H for gfpb.
   Restart.
   coinduction' P H for gfpb.
@@ -183,9 +185,9 @@ Abort.
 Goal forall x, gfpb x /\ gfp c x.
 Proof.
   intro.
-  Fail coinduction P H.          (* duly failing: gfpb not recognised *)
-  Fail coinduction P H for gfpb.     (* duly failing: two gfps) *)
-  Fail coinduction' P H for gfpb.     (* duly failing: two gfps) *)
+  Fail coinduction P H.           (* duly failing: two gfps *)
+  Fail coinduction P H for gfpb.  (* duly failing: two gfps) *)
+  Fail coinduction' P H for gfpb. (* duly failing: two gfps) *)
 Abort.
 
 Goal forall x, gfpb x /\ True.
@@ -212,6 +214,32 @@ Section s.
     Restart.
     coinduction r cih for bisim.  (* works, elpi-based, bound names not preserved *)
     Restart.
+    coinduction r cih arity 2.  (* works, elpi-based, bound names not preserved *)
+    Restart.
     Fail coinduction' r cih for bisim. (* would be painful to get in ocaml *)
+  Abort.
+End s.
+
+
+(** dependent+parametric+named *)
+Section s.  
+  Variable T: nat -> Type.
+  Variable f: forall n, T n.
+  Variable b: forall {X}, mon (forall n, list X -> T n -> T (n+n) -> Prop).
+  Let bisim {X} := gfp (@b X).
+  Variable X: Type.
+
+  Goal forall n l t u, @bisim X n l t u.
+  Proof.
+    coinduction r cih for bisim. 
+    Restart.
+    coinduction r cih for (@bisim X).
+    Restart.
+    coinduction r cih arity 4.
+    Restart.
+    unfold bisim. 
+    coinduction r cih.
+    Restart.
+    coinduction' r cih for (@bisim X).
   Abort.
 End s.

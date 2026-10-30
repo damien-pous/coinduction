@@ -1,40 +1,99 @@
-% natural numbers (are they in elpi's stdlib?)
-kind nat type.
-type o nat.
-type s nat -> nat.
-
-% [split N L H K] iff L=H++K and |H|=N
-func split nat, list A -> list A, list A.
-split o L [] L.
-split (s N) (X::L) (X::A) B :- split N L A B.
-
 % [split' N L H K] iff L=H++K and |K|=N
-func split' nat, list A -> list A, list A.
-split' N L H K :- split N {std.rev L} K' H', std.rev H' H, std.rev K' K.
+func split' int, list A -> list A, list A.
+split' N L H K :- std.split-at N {std.rev L} K' H', std.rev H' H, std.rev K' K.
 
-% box N R P returns P where strictly positive occurrences of R applied to N arguments are boxed
-func box nat, term, term -> term.
-box N R {{lp:P /\ lp:Q}} {{lp:P' /\ lp:Q'}} :- !,
-  box N R P P', box N R Q Q'.
-box N R {{forall x, lp:(P x)}} {{forall y, lp:(P' y)}} :- !,
-  pi x \ box N R (P x) (P' x).
-box N R P P' :- box.app N R P P'.
+% [box N P P' R] when P' is P with strictly positive occurrences of R applied to N arguments boxed
+% if N is unspecified, then the first encoutered application node should syntactically be a gfp
+func box int, term -> term, term.
+box N {{lp:P /\ lp:Q}} {{lp:P' /\ lp:Q'}} R :- !,
+  box N P P' R, box N Q Q' R.
+box N {{forall x, lp:(P x)}} {{forall y, lp:(P' y)}} R :- !,
+  pi x \ box N (P x) (P' x) R.
+box N P P' R :- box.app N P P' R.
 
-func box.app nat, term, term -> term.
-box.app o R R' {{box_gfp lp:R}} :-
-  coq.unify-eq R R' ok.
-box.app (s N) R (app (P::L)) (app ({{box_gfp lp:R}}::K)) :-
-  split' (s N) L H K,
-  coq.unify-eq R (app (P::H)) ok.
+func same.gfp term, term -> .
+same.gfp R S :- coq.unify-eq R S ok, !.
+same.gfp R S :-
+  coq.term->string R R',
+  coq.term->string S S',
+  coq.ltac.fail 0 "found two distinct gfps:\n" R' "\nand\n" S'.
+
+func good.length list A, int -> .
+good.length L N :- std.length L N, !.
+good.length _ _ :- coq.ltac.fail 0 "invalid arity, please report".
+
+func box.app int, term -> term, term.
+box.app N (app [{{@gfp}},_,_,B|L]) (app ({{box_gfp lp:R}}::L)) R :- !,
+  same.gfp R {{gfp lp:B}}, good.length L N.
+box.app 0 R {{box_gfp lp:R'}} R' :- !,
+  same.gfp R R'.
+box.app N P P' R :-
+  var N, !, declare_constraint (box.app N P P' R) [N].
+box.app N (app (P::L)) (app ({{box_gfp lp:R}}::K)) R :- !,
+  split' N L H K,
+  same.gfp R (app (P::H)).
+box.app _ P _ _ :-
+  coq.term->string P P',
+  coq.ltac.fail 0 "unrecognised subterm: " P'.
+
+
+%% alternative and simpler version, when gfp occurs syntactically at first application node
+% box' P returns P where strictly positive occurrences of gfp are boxed
+% second returned value is the common instance of [gfp ?b]
+func box' term -> term,term.
+box' {{lp:P /\ lp:Q}} {{lp:P' /\ lp:Q'}} GFP :- !,
+  box' P P' GFP, box' Q Q' GFP.
+box' {{forall x, lp:(P x)}} {{forall y, lp:(P' y)}} GFP :- !,
+  pi x \ box' (P x) (P' x) GFP.
+box' (app ({{@gfp}}::_::_::B::L)) (app ({{box_gfp lp:GFP}}::L)) GFP :- !,
+  same.gfp {{gfp lp:B}} GFP.
+box' P _ _ :-
+  coq.term->string P P',
+  coq.ltac.fail 0 "unrecognised subterm: " P'.
+
+% compute the type of term
+func type.check term -> term.
+type.check R T :- std.assert-ok! (coq.typecheck R T) "given constr does not typecheck".
 
 % compute the arity of relation type
-func arity term -> nat.
-arity {{forall _, lp:T}} (s N) :- !, arity T N.
-arity {{Prop}} o.
+func arity term -> int.
+arity {{forall x, lp:(T x)}} N' :- !,
+  pi x \ arity (T x) N, N' is N + 1.
+arity {{Prop}} 0 :- !.
+arity T _ :-
+  coq.term->string T T',
+  coq.ltac.fail 0 "unrecognised arity: " T'.
+
+func not.var term -> .
+not.var R :- not (var R), !.
+not.var _ :- coq.ltac.fail 0 "could not recognise a gfp".
 
 solve (goal _ _ P _ [trm R] as G) G' :-
   @ltacfail! 0 => std.do! [
-	     coq.typecheck R TR ok,
-  	     box {arity TR} R P P',
+	     type.check R TR,
+  	     box {arity TR} P P' R,
 	     refine {{(_: lp:P'): lp:P}} G G'
   ].
+
+solve (goal _ _ P _ [int 0] as G) G' :-
+  @ltacfail! 0 => std.do! [
+   	     box' P P' R,
+	     not.var R,
+	     refine {{(_: lp:P'): lp:P}} G G'
+  ].
+  
+solve (goal _ _ P _ [int N] as G) G' :-
+  @ltacfail! 0 => std.do! [
+  	     box N P P' R,
+	     not.var R,
+	     refine {{(_: lp:P'): lp:P}} G G'
+  ].
+
+solve (goal _ _ P _ [] as G) G' :-
+  @ltacfail! 0 => std.do! [
+  	     box _ P P' R,
+	     not.var R,
+	     refine {{(_: lp:P'): lp:P}} G G'
+  ].
+
+
