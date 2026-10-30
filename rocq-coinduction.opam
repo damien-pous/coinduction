@@ -21,6 +21,7 @@ install: [make "install"]
 depends: [
   "rocq-prover" {>= "9.2"}
   "rocq-stdlib"
+  "rocq-elpi"
 ]
 
 tags: [

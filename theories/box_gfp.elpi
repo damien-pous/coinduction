@@ -1,0 +1,40 @@
+% natural numbers (are they in elpi's stdlib?)
+kind nat type.
+type o nat.
+type s nat -> nat.
+
+% [split N L H K] iff L=H++K and |H|=N
+func split nat, list A -> list A, list A.
+split o L [] L.
+split (s N) (X::L) (X::A) B :- split N L A B.
+
+% [split' N L H K] iff L=H++K and |K|=N
+func split' nat, list A -> list A, list A.
+split' N L H K :- split N {std.rev L} K' H', std.rev H' H, std.rev K' K.
+
+% box N R P returns P where strictly positive occurrences of R applied to N arguments are boxed
+func box nat, term, term -> term.
+box N R {{lp:P /\ lp:Q}} {{lp:P' /\ lp:Q'}} :- !,
+  box N R P P', box N R Q Q'.
+box N R {{forall x, lp:(P x)}} {{forall y, lp:(P' y)}} :- !,
+  pi x \ box N R (P x) (P' x).
+box N R P P' :- box.app N R P P'.
+
+func box.app nat, term, term -> term.
+box.app o R R' {{box_gfp lp:R}} :-
+  coq.unify-eq R R' ok.
+box.app (s N) R (app (P::L)) (app ({{box_gfp lp:R}}::K)) :-
+  split' (s N) L H K,
+  coq.unify-eq R (app (P::H)) ok.
+
+% compute the arity of relation type
+func arity term -> nat.
+arity {{forall _, lp:T}} (s N) :- !, arity T N.
+arity {{Prop}} o.
+
+solve (goal _ _ P _ [trm R] as G) G' :-
+  @ltacfail! 0 => std.do! [
+	     coq.typecheck R TR ok,
+  	     box {arity TR} R P P',
+	     refine {{(_: lp:P'): lp:P}} G G'
+  ].

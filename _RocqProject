@@ -10,6 +10,7 @@ theories/tower.v
 theories/companion.v
 theories/rel.v
 theories/tactics.v
+theories/tests_elpi.v
 theories/tests.v
 theories/all.v
 

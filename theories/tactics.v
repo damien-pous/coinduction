@@ -16,6 +16,8 @@ we provide three tactics:
 
 
 Require Import lattice tower rel.
+From elpi Require Import elpi.
+From Coinduction Extra Dependency "box_gfp.elpi" as box_gfp.
 Import CoindNotations.
 Set Implicit Arguments.
 
@@ -363,6 +365,30 @@ Register reification.by_symmetry as coinduction.by_symmetry.
 (** loading the OCaml plugin  *)
 Declare ML Module "rocq-coinduction.plugin". 
 
+(** in case [gfp b] is named (eg. Definition x := gfp b),
+    it is not easy to recognise it automatically.
+    We design two workarounds.
+ *)
+
+(** the following tactic makes it possible to retrieve [b] out of a term [x] convertible to [gfp b] *)
+Definition get_gfp X L b x (e: @gfp X L b = x) := b.
+Arguments get_gfp [_ _ _] _ _.
+Ltac get_gfp x := eval unfold get_gfp in (get_gfp x eq_refl).
+(** then we can use the ocaml plugin to perform abstraction  *)
+Tactic Notation "abstract_gfp_ocaml" uconstr(x) :=
+  let b := get_gfp x in abstract_gfp x b.
+
+(** alternatively, we can perform abstraction through the following elpi tactic *)
+Definition box_gfp {T} (x: T) := x.
+Elpi Tactic box_gfp.
+Elpi Accumulate File box_gfp.
+Lemma boxed_gfp_prop {X} {L : CompleteLattice X} [b : mon X] (P : X -> Prop):
+  (forall x : Chain b, P (elem x)) -> P (box_gfp (gfp b)).
+Proof. exact (gfp_prop P). Qed.
+Tactic Notation "abstract_gfp_elpi" uconstr(x) :=
+  elpi box_gfp (x); apply boxed_gfp_prop.
+
+
 (** ** starting a proof by (enhanced) coinduction *)
 (** when the goal is of the shape
 
@@ -393,28 +419,11 @@ Declare ML Module "rocq-coinduction.plugin".
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
   abstract_gfp; intro R; apply_ptower R O; intros H.
 
-(** in case [gfp b] is named (eg. Definition x := gfp b), it is not possible to recognise it automatically.
-    In those cases we can use the annotation "for x" *)
-(* the following tactic makes it possible to retrieve [b] out of a defined term [x] convertible to [gfp b] *)
-Definition get_gfp X L b x (e: @gfp X L b = x) := b.
-Arguments get_gfp [_ _ _] _ _.
-Ltac get_gfp x :=
-  (eval unfold get_gfp in (get_gfp x eq_refl))
-(* || fail "did not recognise" x "as a gfp" *).
-
-(* BELOW: example of how to use [get_gfp] *)
-(* Section s. *)
-(*   Context X (L: CompleteLattice X) (b: mon X). *)
-(*   Let x := gfp b. *)
-(*   Goal True. *)
-(*     let c := get_gfp x in set (b' := c). *)
-(*     Fail let c := get_gfp nat in set (b'' := c). *)
-(*   Abort. *)
-(* End s. *)
-    
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) "for" uconstr(x) :=
-  let b := get_gfp x in
-  abstract_gfp x b; intro R; apply_ptower R O; intros H.
+  abstract_gfp_elpi x; intro R; apply_ptower R O; intros H.
+
+Tactic Notation "coinduction'" ident(R) simple_intropattern(H) "for" uconstr(x) :=
+  abstract_gfp_ocaml x; intro R; apply_ptower R O; intros H.
 
 (** ** accumulating knowledge in a proof by enhanced coinduction *)
 
