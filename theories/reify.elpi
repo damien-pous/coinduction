@@ -1,0 +1,104 @@
+% compute the type of a term
+func type.check term -> term.
+type.check R T :- std.assert-ok! (coq.typecheck R T) "given constr does not typecheck".
+
+%% [parse A B P P' C X]
+% A: Arity
+% B: mon S
+% P ~ pT `R X        (the current goal)
+% P' = R\ pT R X     (so that the next goal is [forall R, P' R -> P' (b R)])
+% C: T
+% X: fT A C
+func parse term, term, term -> (term -> term), term, term.
+parse A B
+  {{lp:P /\ lp:Q}}
+  (R\ app [{{and}}, P' R, Q' R])
+  (app [{{reification.cnj}}, C, D])
+  {{(lp:X,lp:Y)}} :- !,
+  parse A B P P' C X, parse A B Q Q' D Y.
+parse A B
+  (prod V S P)
+  (R\ prod V S (x\ P' x R))
+  (app [{{reification.abs}},S,fun V S C])
+  (fun V S X) :- !,
+  pi x \ decl x V S ==> parse A B (P x) (P' x) (C x) (X x).
+parse A _
+  (app [{{@elem}},_,_,_,_|L])
+  (R\ app [R|L])
+  {{reification.hol}}
+  (app [{{tuple}},A|L]) :- !.
+parse _ _ P _ _ _ :-
+  coq.term->string P P',
+  coq.ltac.fail 0 "unrecognised subterm: " P'.
+
+%% [arity S A] computes the arity of relation type
+% A: Arity
+% S ~ REL A
+func arity term -> term.
+arity (prod V S T) (app [{{ABS}},S,fun V S A]) :- !,
+  pi x \ decl x V S ==> arity (T x) (A x).
+arity {{Prop}} {{PRP}} :- !.
+arity T _ :-
+  coq.term->string T T',
+  coq.ltac.fail 0 "unrecognised arity: " T'.
+
+solve (goal _ _ P _ [trm R] as G) G' :-
+  @ltacfail! 0 => std.do! [
+	     type.check R {{Chain lp:B}},
+	     type.check B {{mon lp:S}},
+	     arity S A,	     
+	     % coq.say "ARITY:" {coq.term->string A},
+	     % type.check A {{Arity}},
+  	     parse A B P P' C X,
+	     % coq.say "P' R:\n" {coq.term->string (P' {{elem lp:R}})},
+	     % coq.say "P' (b R):\n" {coq.term->string (P' {{lp:B (elem lp:R)}})},
+	     % coq.say "C:\n" {coq.term->string C},
+	     % type.check C {{reification.T}},
+	     % coq.say "X:\n" {coq.term->string X},
+	     % type.check X {{reification.fT lp:A lp:C}},
+	     PP = prod _ _ (R\ prod _ (P' {{elem lp:R}}) (_\ P' {{lp:B (elem lp:R)}})),
+	     refine {{(@reification.tower' lp:A lp:C lp:B lp:X (_: lp:PP) lp:R)}} G G'
+  ].
+
+
+%% [pparse N A B P P' CS C X]
+% N is the number of hypotheses to accumulate
+% A: Arity
+% B: mon S
+% P ~ pTs CS `R (pT `R X)                    (the current goal)
+% P' = R\ pTs (tsnoc CS X) `R (pT (B `R) X)  (so that the next goal is [forall R, P' R])
+% CS: Ts A
+% C: T
+% X: fT A C
+func pparse term, term, term, term -> (term -> term), term, term, term.
+pparse {{0}} A B P
+  (R\ prod _ (P' R) (_\ P' {{lp:B lp:R}}))
+  {{@reification.tnil lp:A}}
+  C X :- !,
+  parse A B P P' C X.
+pparse {{S lp:N}} A B {{lp:P -> lp:Q}}
+  (R\ prod _ (P' R) (_\ Q' R))
+  {{@reification.tcons lp:A lp:C lp:X lp:CS}}
+  D Y :- !,
+  parse A B P P' C X,
+  pparse N A B Q Q' CS D Y.
+
+solve (goal _ _ P _ [trm R, trm N] as G) G' :-
+  @ltacfail! 0 => std.do! [
+	     type.check R {{Chain lp:B}},
+	     type.check B {{mon lp:S}},
+	     arity S A,	     
+	     % coq.say "ARITY:" {coq.term->string A},
+	     % type.check A {{Arity}},
+  	     pparse N A B P P' CS C X,
+	     % coq.say "P' R:\n" {coq.term->string (P' {{elem lp:R}})},
+	     % coq.say "CS:\n" {coq.term->string CS},
+	     % type.check CS {{reification.Ts lp:A}},
+	     % coq.say "C:\n" {coq.term->string C},
+	     % type.check C {{reification.T}},
+	     % coq.say "X:\n" {coq.term->string X},
+	     % type.check X {{reification.fT lp:A lp:C}},
+	     % coq.say "READY..",
+	     PP = prod _ {{Chain lp:B}} (R\ P' {{elem lp:R}}),
+	     refine {{(@reification.ptower lp:A lp:B lp:CS lp:C lp:X (_: lp:PP) lp:R)}} G G'
+  ].

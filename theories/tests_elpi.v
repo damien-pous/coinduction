@@ -50,7 +50,7 @@ Section s.
   Goal forall n, sim n 2 -> sim n 4 /\ forall m, sim 2 m.
   Proof.
     elpi box_gfp (sim). 
-    apply gfp_prop. 
+    apply gfp_prop.    
   Abort.
 
   Goal forall n, sim n 2 -> sim n 4 /\ forall m, gfp b 2 m.

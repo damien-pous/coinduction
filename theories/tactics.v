@@ -18,6 +18,7 @@ we provide three tactics:
 Require Import lattice tower rel.
 From elpi Require Import elpi.
 From Coinduction Extra Dependency "box_gfp.elpi" as box_gfp.
+From Coinduction Extra Dependency "reify.elpi" as reify.
 Import CoindNotations.
 Set Implicit Arguments.
 
@@ -216,6 +217,11 @@ Module reification.
    apply (tower (inf_closed_pT _ _ x)). apply H.
  Qed.
 
+ Proposition tower' A c (b: mon (REL A)) (x: fT A c):
+   (forall R: Chain b, pT `R x -> pT (b `R) x) -> 
+   (forall R: Chain b, pT `R x).
+ Admitted.
+
  (* idea: the above lemma can be used as follows: *)
  (*
  Section s.
@@ -393,6 +399,52 @@ Tactic Notation "abstract_gfp_elpi" "for" uconstr(x) :=
 Tactic Notation "abstract_gfp_elpi" "arity" int(n) :=
   elpi box_gfp ltac_int:(n); apply boxed_gfp_prop.
 
+
+Elpi Tactic reify.
+Elpi Accumulate File reify.
+Ltac apply_ptower_elpi R n :=
+  elpi reify (R) (n); clear R; intro R.
+       
+Section s.  
+  Variable b : mon (nat -> nat -> Prop).  
+  Goal gfp b 2 3.
+  Proof.
+    abstract_gfp_elpi. intro R.
+    elpi reify (R) (0).    
+    clear R. intros R H. 
+  Abort.
+
+  Goal gfp b 3 4 /\ gfp b 4 5.
+  Proof.
+    abstract_gfp_elpi. intro R.
+    elpi reify (R) (0).
+    clear R. intros R H. 
+  Abort.
+
+  Goal forall n, gfp b n (n+3).
+  Proof.
+    abstract_gfp_elpi. intro R.
+    elpi reify (R) (0).
+    clear R. intros R H. 
+  Abort.
+
+  Goal forall n, gfp b n (n+3) /\ forall m, gfp b m n.
+  Proof.
+    abstract_gfp_elpi. intro R.
+    elpi reify (R) (0).
+    clear R. intros R H. 
+  Abort.
+
+  Goal gfp b 2 3.
+  Proof.
+    abstract_gfp_elpi. intro R.
+    elpi reify (R) (0). clear R. intros R H.
+    cut (`R 4 5). admit.
+    revert H. 
+    elpi reify (R) (1). clear R. intros R H H'.
+  Abort.
+End s. 
+  
 (** ** starting a proof by (enhanced) coinduction *)
 (** when the goal is of the shape
 
@@ -421,15 +473,15 @@ Tactic Notation "abstract_gfp_elpi" "arity" int(n) :=
     (The last step could be implemented with [simpl reification.pT], but this would result in unwanted additional simplifications, and this resets names of bound variables in a very bad way. This is why we spend time in OCaml to reconstruct a type for the new goal by following syntactically the initial one.)
   *)
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
-  abstract_gfp_elpi; intro R; apply_ptower R O; intros H.
+  abstract_gfp_elpi; intro R; apply_ptower_elpi R O; intros H.
 
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) "for" uconstr(x) :=
-  abstract_gfp_elpi for x; intro R; apply_ptower R O; intros H.
+  abstract_gfp_elpi for x; intro R; apply_ptower_elpi R O; intros H.
 
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) "arity" int(n) :=
   (* abstract_gfp_elpi arity n; *) (* TOFIX: how to pass [n] as an argument? *)
   elpi box_gfp ltac_int:(n); apply boxed_gfp_prop;
-  intro R; apply_ptower R O; intros H. 
+  intro R; apply_ptower_elpi R O; intros H. 
 
 Tactic Notation "coinduction'" ident(R) simple_intropattern(H) :=
   abstract_gfp_ocaml; intro R; apply_ptower R O; intros H.
@@ -473,7 +525,7 @@ Tactic Notation "coinduction'" ident(R) simple_intropattern(H) "for" uconstr(x) 
 Ltac xaccumulate R n :=
   lazymatch goal with
   | H: context[R] |- _ => revert H; xaccumulate R (S n); intro H
-  | _ => apply_ptower R n
+  | _ => apply_ptower_elpi R n
   end.
 
 Tactic Notation "accumulate" hyp(R) simple_intropattern(H) :=
@@ -497,7 +549,7 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
     conjunctions are also allowed, like in the other tactics)
  *)
 (** as above, we use the OCaml defined tactic [apply_by_symmetry] in order to apply the lemma [reification.by_symmetry] and set the resulting goal back into a user-friendly shape *)
-Ltac default_sym_tac := solve[clear;firstorder]||fail "could not get symmetry automatically".
+Ltac default_sym_tac := solve[clear;firstorder] || fail "could not get symmetry automatically".
 Tactic Notation "symmetric" hyp(R) "using" tactic(tac) :=
   apply_by_symmetry R; [simpl reification.pT; tac|].
 Tactic Notation "symmetric" hyp(R) :=
