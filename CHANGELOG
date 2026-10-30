@@ -1,3 +1,8 @@
+* ?? Nov 2026: v1.23
+
+ - fixes issues about named gfps and contravariant occurrences of gfp.
+ - needs rocq-elpi
+
 * 06 May 2026: v1.22
 
  - needs rocq 9.2

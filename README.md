@@ -7,8 +7,16 @@
 
 A library for doing proofs by (enhanced) coinduction.
 
-It is based on the notion of 'companion' from the paper
-Coinduction All the Way Up. Damien Pous. In Proc. LICS, 2016.
+Initially based on the notion of 'companion' from the paper
+Coinduction All the Way Up. 
+Damien Pous. 
+In Proc. LICS, 2016.
+
+Now using ideas from
+Tower Induction and Up-to Techniques for CCS with Fixed Points. 
+Steven Schäfer, Gert Smolka. 
+In Proc. RAMiCS 2017
+
 
 It contains:
  - enhancements of the coinductive proof method
@@ -62,10 +70,16 @@ make
 make install
 ```
 
-## Compatibility
+Starting from v1.23, due to the dependency on rocq-elpi,
+recall to add "elpi_elpi elpi" in the le stanza ``theories'' of your project if you want to compile it with dune.
 
-- versions v1.21 compiles with Rocq 9.0 without transition packages
-- versions v1.20 compiles with Coq 8.20 and Rocq 9.0 with transition packages
+
+## Compatibility and dependencies
+
+- version v1.23 compiles with Rocq 9.2 - 9.3 and needs rocq-elpi
+- version v1.22 compiles with Rocq 9.2 - 9.3
+- version v1.21 compiles with Rocq 9.0 - 9.2 without transition packages
+- version v1.20 compiles with Coq 8.20 and Rocq 9.0 with transition packages
 - versions v1.6, v1.7 and v1.8 all compile with Coq 8.16.1, 8.17.1 and 8.18.0
 - v1.7 is feature equivalent but not backward-compatible with v1.6
 - the master branch of this git repository should compile with Coq master

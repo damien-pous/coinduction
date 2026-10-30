@@ -37,7 +37,9 @@ box.app _ P _ _ :-
   coq.ltac.fail 0 "unrecognised subterm: " P'.
 
 
-%% alternative and simpler version, when gfp occurs syntactically at first application node
+%% alternative and simpler version, when the same gfp occurs syntactically at all application nodes
+%% (bound to magic arity 42 for now)
+%
 % box' P returns P where strictly positive occurrences of gfp are boxed
 % second returned value is the common instance of [gfp ?b]
 func box' term -> term,term.
@@ -57,13 +59,14 @@ type.check R T :- std.assert-ok! (coq.typecheck R T) "given constr does not type
 
 % compute the arity of relation type
 func arity term -> int.
-arity {{forall x, lp:(T x)}} N' :- !,
-  pi x \ arity (T x) N, N' is N + 1.
+arity (prod V S T) N' :- !,
+  pi x \ decl x V S ==> arity (T x) N, N' is N + 1.
 arity {{Prop}} 0 :- !.
 arity T _ :-
   coq.term->string T T',
   coq.ltac.fail 0 "unrecognised arity: " T'.
 
+% check that R is not a variable in the end
 func not.var term -> .
 not.var R :- not (var R), !.
 not.var _ :- coq.ltac.fail 0 "could not recognise a gfp".
@@ -75,7 +78,7 @@ solve (goal _ _ P _ [trm R] as G) G' :-
 	     refine {{(_: lp:P'): lp:P}} G G'
   ].
 
-solve (goal _ _ P _ [int 0] as G) G' :-
+solve (goal _ _ P _ [int 42] as G) G' :-
   @ltacfail! 0 => std.do! [
    	     box' P P' R,
 	     not.var R,

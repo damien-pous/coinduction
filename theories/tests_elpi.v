@@ -21,7 +21,7 @@ Section s.
   Proof.
     unfold sim. elpi box_gfp.
     Restart.
-    unfold sim. elpi box_gfp 0.
+    unfold sim. elpi box_gfp 42. (* magic arity for testing alternative elpi code *)
     Restart.
     elpi box_gfp 2.
     Restart.
