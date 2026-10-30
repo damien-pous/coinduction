@@ -166,11 +166,11 @@ Let gfpb := gfp b.
 Goal forall x, gfpb x.
 Proof.
   Fail coinduction P H.         (* duly failing: gfpb not recognised *)
-  coinduction P H for gfpb.     (* note: bound names are not preserved (elpi-based) *)
+  coinduction P H for gfpb.
   Restart.
-  coinduction P H arity 1.      (* note: bound names are not preserved (elpi-based) *)
+  coinduction P H arity 1.
   Restart.
-  coinduction' P H for gfpb.    (* note: with the ocaml variant, bound names are preserved *)
+  coinduction' P H for gfpb.
 Abort.
 
 Goal forall x, gfp b x /\ gfpb x.
@@ -208,15 +208,15 @@ Section s.
 
   Goal forall t u, @bisim X t u.
   Proof.
-    coinduction r cih for (@bisim X). (* works, elpi-based, bound names not preserved *)
+    coinduction r cih for (@bisim X).
     Restart.
-    coinduction' r cih for (@bisim X). (* works, ocaml-based, bound names preserved *)
+    coinduction' r cih for (@bisim X).
     Restart.
-    coinduction r cih for bisim.  (* works, elpi-based, bound names not preserved *)
+    coinduction r cih for bisim.
     Restart.
-    coinduction r cih arity 2.  (* works, elpi-based, bound names not preserved *)
+    coinduction r cih arity 2.
     Restart.
-    Fail coinduction' r cih for bisim. (* would be painful to get in ocaml *)
+    Fail coinduction' r cih for bisim.
   Abort.
 End s.
 

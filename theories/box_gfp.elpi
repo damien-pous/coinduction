@@ -7,8 +7,8 @@ split' N L H K :- std.split-at N {std.rev L} K' H', std.rev H' H, std.rev K' K.
 func box int, term -> term, term.
 box N {{lp:P /\ lp:Q}} {{lp:P' /\ lp:Q'}} R :- !,
   box N P P' R, box N Q Q' R.
-box N {{forall x, lp:(P x)}} {{forall y, lp:(P' y)}} R :- !,
-  pi x \ box N (P x) (P' x) R.
+box N (prod V T P) (prod V T P') R :- !,
+  pi x \ decl x V T ==> box N (P x) (P' x) R.
 box N P P' R :- box.app N P P' R.
 
 func same.gfp term, term -> .
@@ -43,8 +43,8 @@ box.app _ P _ _ :-
 func box' term -> term,term.
 box' {{lp:P /\ lp:Q}} {{lp:P' /\ lp:Q'}} GFP :- !,
   box' P P' GFP, box' Q Q' GFP.
-box' {{forall x, lp:(P x)}} {{forall y, lp:(P' y)}} GFP :- !,
-  pi x \ box' (P x) (P' x) GFP.
+box' (prod N T P) (prod N T P') GFP :- !,
+  pi x \ decl x N T ==> box' (P x) (P' x) GFP.
 box' (app ({{@gfp}}::_::_::B::L)) (app ({{box_gfp lp:GFP}}::L)) GFP :- !,
   same.gfp {{gfp lp:B}} GFP.
 box' P _ _ :-
