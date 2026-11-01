@@ -1,27 +1,41 @@
-%% [find.gfp P B] looks for an occurrence of [gfp B] in [P]
+%% [find.gfp P B] looks for an occurrence of [gfp ?B] in [P], modulo conversion, and returns [B]
+%
 func find.gfp term -> term.
+%
 find.gfp {{lp:P /\ _}} B :- !, find.gfp P B.
 find.gfp (prod X S P) B :- !,  pi x \ decl x X S ==> find.gfp (P x) B.
-% easy case: when gfp occurrs explicitly
+% easy case: when gfp occurs explicitly
 find.gfp (app [{{@gfp}},_,_,B|_]) B :- !.
-% harder case: when gfp occurrs under an other name
+% harder case: when gfp occurs under an other name
 % in that case we must guess how many arguments to skip before finding it
 find.gfp (app L) B :- xfind.gfp {std.rev L} B, !.
 find.gfp P _ :- coq.error "did not recognise a gfp: " {coq.term->string P}.
 
+%% [xfind.gfp L B] tries to recognise [gfp ?B] as a partial application of [L]
+% L is given reversed so that it is easier to pop elements from the end:
+% xfind.gfp [X3,X2,X1] tries [app [X1,X2,X3]] first, then [app [X1,X2]], then [app [X1]]
+%
 func xfind.gfp list term -> term.
+%
+xfind.gfp nil _ :- !, fail.
 xfind.gfp L B :- coq.unify-eq (app {std.rev L}) {{gfp lp:B}} ok, !.
 xfind.gfp (_::L) B :- xfind.gfp L B.
 
-%% [parse A N R P P' C X]
-% A: Arity
-% N: int    N=|A|
-% R: REL A
-% P ~ pT R X        (the current goal)
-% P' = R\ pT R X    (so that the next goal is [forall R: Chain B, P' `R -> P' (b `R)])
-% C: T
-% X: fT A C
+%% [parse A N R P P' C X] reifies a goal [P] in order to apply [reification.tower]
+% 
+% A: Arity            the current arity
+% N: int    N=|A|     same as an int
+% R: REL A            the current relation (either [gfp B], or [`R] with [R: Chain B])
+% P: Prop             the current goal
+% ================ 
+% C: T                the skeleton for reification
+% X: fT A C           the reified value, such that [P ≡ pT R X]
+% P' ≡ R\ pT R X      the current goal abstracted over R, so that we can goal obtained
+%                      after applying [reification.tower] to
+%                      [forall R: Chain B, P' `R -> P' (b `R)]
+%
 func parse term, int, term, term -> (term -> term), term, term.
+%
 parse A N R
   {{lp:P /\ lp:Q}}
   (R\ app [{{and}}, P' R, Q' R])
@@ -41,42 +55,46 @@ parse A N R
   (app [{{tuple}},A|L]) :-
   std.split-at N {std.rev RL} L' R', !,
   R'' = app {std.rev R'},
-  unify R R'',
+  unify.gfps R R'',
   std.rev L' L.
 parse _ _ _ P _ _ _ :-
   coq.error "unrecognised subterm: " {coq.term->string P}.
 
-%% attempt to unify to rocq terms
-func unify term, term ->.
-unify R S :- coq.unify-eq R S ok, !.
-unify R S :- coq.error "found two distinct gfps:\n" {coq.term->string R} "\nand\n" {coq.term->string S}.
+%% [unify.gfps R S] attempts to unify the rocq terms [R] and [S]
+%
+func unify.gfps term, term ->.
+unify.gfps R S :- coq.unify-eq R S ok, !.
+unify.gfps R S :- coq.error "found two distinct gfps:\n" {coq.term->string R} "\nand\n" {coq.term->string S}.
 
 
 %% [arity S A N] computes the arity of relation type S
 % A: Arity
 % N: int  N = |A|
-% S ~ REL A
+% S ≡ REL A
+%
 func arity term -> term, int.
 arity (prod V S T) (app [{{ABS}},S,fun V S A]) N':- !,
   pi x \ decl x V S ==> arity (T x) (A x) N, N' is N + 1.
 arity {{Prop}} {{PRP}} 0 :- !.
 arity T _ _ :- coq.error "unrecognised arity:" {coq.term->string T}.
 
-% compute the type of a term
+%% [type.check R T] attempts to show [R: T], unifying elpi variables if necessary
+%
 func type.check term -> term.
 type.check R T :- std.assert-ok! (coq.typecheck R T) "given constr does not typecheck".
 
+%% printing debugging messages
 pred debug.say string ->.
 :if "DEBUG_COINDUCTION"
 debug.say S :- coq.notice S, fail.
 debug.say _.
-
+%% with an additional term
 pred debug.say.term string,term ->.
 :if "DEBUG_COINDUCTION"
 debug.say.term S U :-
   coq.notice {std.string.concat " " [S,"=",{coq.term->string U}]}, fail.
 debug.say.term _ _.
-
+%% with an additional typechecking constraint
 pred debug.check string,term,term ->.
 :if "DEBUG_COINDUCTION"
 debug.check S U T :-
@@ -85,7 +103,10 @@ debug.check S U T :-
   fail.
 debug.check _ _ _.
 
-solve (goal _ _ P _ [str "start"] as G) G' :-
+%% entrypoint for the coinduction tactic
+%% find the gfp, reifies the goal, apply [reification.tower],
+%% and change the resulting goal to a user-friendly one (i.e., without [pT])
+solve (goal _ _ P _ [str "start"] as G) G' :- !,
   @ltacfail! 0 => std.do! [
              debug.say "START",
   	     find.gfp P B,
@@ -99,7 +120,31 @@ solve (goal _ _ P _ [str "start"] as G) G' :-
 	     debug.check "X" X {{reification.fT lp:A lp:C}},
 	     PP = prod _ {{Chain lp:B}} (R\ prod _ (P' {{elem lp:R}}) (_\ P' {{body lp:B (elem lp:R)}})),
 	     debug.check "PP" PP {{Prop}},
+             debug.say "About to apply tower",
 	     refine {{@reification.tower lp:A lp:C lp:B lp:X (_: lp:PP)}} G G',
+  ].
+
+%% entrypoint for the symmetric tactic
+%% reify the goal, apply [reification.by_symmetry],
+%% and change the resulting goals to user-friendly ones (i.e., without [pT])
+solve (goal _ _ P _ [str "symmetry", trm R] as G) G' :- !,
+  @ltacfail! 0 => std.do! [
+             debug.say "SYMMETRY",
+	     type.check R {{Chain lp:B}},
+	     type.check B {{mon lp:S}},
+	     arity S A N,
+ 	     debug.check "ARITY" A {{Arity}},
+	     std.assert! (N = 2) "not a binary relation",
+	     std.assert-ok! (coq.elaborate-skeleton _ {{Symmetrical converse lp:B lp:H}} BH)
+	        "the gfp is not defined throug a symmetric function",
+  	     parse A N {{body lp:B (elem lp:R)}} P P' C X,
+	     debug.say.term "P'" (fun _ _ P'),
+	     debug.check "C" C {{reification.T}},
+	     debug.check "X" X {{reification.fT lp:A lp:C}},
+	     PP = P' {{body lp:H (elem lp:R)}},
+	     debug.check "PP" PP {{Prop}},
+             debug.say "About to apply by_symmetry",
+	     refine {{@reification.by_symmetry _ lp:C lp:X lp:B lp:H lp:BH lp:R _ (_: lp:PP)}} G G',
   ].
 
 
@@ -108,11 +153,13 @@ solve (goal _ _ P _ [str "start"] as G) G' :-
 % B: mon S
 % A: Arity
 % N: int = |A|
-% P ~ pTs CS R (pT R X)                    (the current goal)
-% P' = R\ pTs (tsnoc CS X) R (pT (N R) X)  (so that the next goal is [forall R, P' R])
-% CS: Ts A
+% P: Prop            (the current goal)
+% ================
+% CS: Ts A           the reified hypotheses
 % C: T
-% X: fT A C
+% X: fT A C          the reified conclusion, such that P ≡ pTs CS R (pT R X) 
+% P' ≡ R\ pTs (tsnoc CS X) R (pT (N R) X)
+%                    a user friendly type for the next goal: [forall R, P' R]
 func pparse term, term, term, int, term, term -> (term -> term), term, term, term.
 pparse {{0}} B A N R P
   (R\ prod _ (P' R) (_\ P' {{body lp:B lp:R}}))
@@ -126,12 +173,15 @@ pparse {{S lp:M}} B A N R {{lp:P -> lp:Q}}
   parse A N R P P' C X,
   pparse M B A N R Q Q' CS D Y.
 
-solve (goal _ _ P _ [str "accumulate", trm R, trm M] as G) G' :-
+%% entrypoint for the accumulate tactic
+%% reifies the goal, apply [reification.ptower],
+%% and change the resulting goal to a user-friendly one (i.e., without [pT])
+solve (goal _ _ P _ [str "accumulate", trm R, trm M] as G) G' :- !,
   @ltacfail! 0 => std.do! [
    	     debug.say "ACCUMULATE",
 	     type.check R {{Chain lp:B}},
 	     type.check B {{mon lp:S}},
-	     arity S A N,	     
+	     arity S A N,
  	     debug.check "ARITY" A {{Arity}},
   	     pparse M B A N {{elem lp:R}} P P' CS C X,
 	     debug.say.term "P' `R:" (P' {{elem lp:R}}),
@@ -140,5 +190,10 @@ solve (goal _ _ P _ [str "accumulate", trm R, trm M] as G) G' :-
 	     debug.check "X" X {{reification.fT lp:A lp:C}},
 	     PP = prod _ {{Chain lp:B}} (R\ P' {{elem lp:R}}),
 	     debug.check "PP" PP {{Prop}},
+             debug.say "About to apply ptower",
 	     refine {{(@reification.ptower lp:A lp:B lp:CS lp:C lp:X (_: lp:PP) lp:R)}} G G'
   ].
+
+solve (goal _ _ _ _ L) _ :-
+  coq.error "Invalid arguments for elpi coinduction: " L
+  "Please use one of [start, symmetry (R), accumulate (R) (n)]".

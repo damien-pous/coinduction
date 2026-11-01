@@ -343,7 +343,7 @@ End reification.
 
 (** * Exported tactics *)
 
-(* Elpi Debug "DEBUG_COINDUCTION". *)
+Elpi Debug "DEBUG_COINDUCTION".
 Elpi Tactic coinduction.
 Elpi Accumulate File coinduction.
 
@@ -375,82 +375,6 @@ Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
 (* Section test.   *)
 (*   Variables b c : mon (nat -> nat -> Prop).   *)
 (*   Goal gfp b 2 3. *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-
-(*   Goal gfp b 3 4 /\ gfp b 4 5. *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-
-(*   Goal gfp b 3 4 /\ gfp c 4 5. *)
-(*   Proof. *)
-(*     Fail coinduction R H. *)
-(*   Abort. *)
-
-(*   Goal forall n, gfp b n (n+3). *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-
-(*   Goal forall n, gfp b n (n+3) /\ forall m, gfp b m n. *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-
-(*   Let gfpb := gfp b.  *)
-(*   Goal gfpb 2 3. *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-
-(*   Goal forall n, gfpb n (n+3) /\ forall m, gfp b m n. *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-
-(*   Goal forall n, gfpb n (n+3) /\ forall m, gfpb m n. *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-(* End test. *)
-
-(* Section test. *)
-(*   Variable T: nat -> Type. *)
-(*   Variables b : mon (forall n, T n -> Prop). *)
-(*   Variable f: forall n, T n. *)
-(*   Goal gfp b 2 (f 2). *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-(*   Let gfpb := gfp b.  *)
-(*   Goal gfpb (f 2). *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-(*   Let gfpb' := gfp b.  *)
-(*   Arguments gfpb': clear implicits. *)
-(*   Goal gfpb' 2 (f 2). *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-(*   Goal gfpb (f 2) /\ gfpb' 3 (f 3). *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-(*   Goal gfpb' 2 (f 2) /\ gfpb (f 3). *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*   Abort. *)
-(* End test. *)
-
-(* Section test. *)
-(*   Variable T: nat -> Type. *)
-(*   Variable f: forall n, T n. *)
-(*   Variable b: mon (forall n, T n -> T (n+n) -> Prop). *)
-
-(*   Goal gfp b _ (f 2) (f 4). *)
 (*   Proof. *)
 (*     coinduction R H. *)
 (*   Abort. *)
@@ -510,19 +434,6 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
 (*   Abort. *)
 (* End test. *)
 
-(* Section test. *)
-(*   Variable T: nat -> Type. *)
-(*   Variable f: forall n, T n. *)
-(*   Variable b: mon (forall n, T n -> T (n+n) -> Prop). *)
-
-(*   Goal gfp b _ (f 2) (f 4). *)
-(*   Proof. *)
-(*     coinduction R H. *)
-(*     cut (forall n x, `R _ (f n) x). admit. *)
-(*     accumulate H'.  *)
-(*   Abort. *)
-(* End test. *)
-
 
 
 (** performing a single step 
@@ -553,36 +464,7 @@ end.
 Tactic Notation "unstep" "in" ident(h) := unstep_in h.
 
 
-
-
 (** reasoning on symmetric candidates with symmetric functions *)
-
-
-(* TODO: switch to elpi *)
-
-(** registering constants required in the OCaml plugin  *)
-Register mon                     as coinduction.mon.
-Register body                    as coinduction.body.
-Register elem                    as coinduction.elem.
-Register Chain                   as coinduction.Chain.
-Register gfp                     as coinduction.gfp.
-Register gfp_prop                as coinduction.gfp_prop.
-Register Symmetrical             as coinduction.Symmetrical.
-Register PRP                     as coinduction.PRP.
-Register ABS                     as coinduction.ABS.
-Register tuple                   as coinduction.tuple.
-Register reification.hol         as coinduction.hol.
-Register reification.abs         as coinduction.abs.
-Register reification.cnj         as coinduction.cnj.
-Register reification.fT          as coinduction.fT.
-Register reification.pT          as coinduction.pT.
-Register reification.tnil        as coinduction.tnil.
-Register reification.tcons       as coinduction.tcons.
-Register reification.ptower      as coinduction.ptower.
-Register reification.by_symmetry as coinduction.by_symmetry.
-
-(** loading the OCaml plugin  *)
-Declare ML Module "rocq-coinduction.plugin". 
 
 (** this tactic makes it possible to play only half of the coinductive game in cases where both the game and the current goal are symmetric:
     - that the game is symmetric is inferred using the typeclasse [Symmetrical]
@@ -594,10 +476,9 @@ Declare ML Module "rocq-coinduction.plugin".
     (where [R: Chain b] with [b] the function for the coinductive game, and [s] the function for the `half of [b]')
     conjunctions are also allowed, like in the other tactics)
  *)
-(** as above, we use the OCaml defined tactic [apply_by_symmetry] in order to apply the lemma [reification.by_symmetry] and set the resulting goal back into a user-friendly shape *)
 Ltac default_sym_tac := solve[clear;firstorder] || fail "could not get symmetry automatically".
 Tactic Notation "symmetric" hyp(R) "using" tactic(tac) :=
-  apply_by_symmetry R; [simpl reification.pT; tac|].
+  (elpi coinduction symmetry (R)); [simpl reification.pT; tac|].
 Tactic Notation "symmetric" hyp(R) :=
   symmetric R using default_sym_tac.
 Tactic Notation "symmetric" "using" tactic(tac) :=
@@ -610,3 +491,13 @@ Tactic Notation "symmetric" :=
   | R: Chain _ |- _ => symmetric R
   | _ => fail "could not find the coinductive candidate"
   end.
+
+(* Section test. *)
+(*   Variables s: mon (nat -> nat -> Prop). *)
+(*   Abbreviation b := (cap s (converse ° s ° converse)). *)
+(*   Goal forall n m, gfp b n m. *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*     symmetric.  *)
+(*   Abort.   *)
+(* End test. *)

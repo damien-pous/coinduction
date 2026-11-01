@@ -233,7 +233,7 @@ Section i.
   Abort.
 
   Goal forall flag t u, bisim flag t u.
-    Fail coinduction r cih.
+    Fail coinduction r cih.     (* duly failing: flag should be fixed and introduced first *)
     intro flag.
     coinduction r cih.
   Abort.
