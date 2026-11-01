@@ -17,6 +17,7 @@ jobs:
         image:
           - 'rocq/rocq-prover:dev'
           - 'rocq/rocq-prover:9.2'
+          - 'rocq/rocq-prover:9.3'
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
