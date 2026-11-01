@@ -225,23 +225,16 @@ Section i.
   Definition wbisim := bisim true.
 
   Goal forall t u, bisim true t u.
-    Fail coinduction r cih.
-    Fail coinduction r cih for bisim.
-    Fail coinduction r cih for (bisim true).
+    coinduction r cih.
   Abort.
 
   Goal forall t u, wbisim t u.
-    Fail coinduction r cih.
-    Fail coinduction r cih for wbisim.
+    coinduction r cih.
   Abort.
 
   Goal forall flag t u, bisim flag t u.
     Fail coinduction r cih.
-    Fail coinduction r cih for bisim.
-    intros flag.
-    Fail coinduction r cih.
-    Fail coinduction r cih for bisim.
+    intro flag.
+    coinduction r cih.
   Abort.
 End i.
-
-  
