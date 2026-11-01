@@ -225,14 +225,17 @@ Section i.
   Definition wbisim := bisim true.
 
   Goal forall t u, bisim true t u.
+  Proof.
     coinduction r cih.
   Abort.
 
   Goal forall t u, wbisim t u.
+  Proof.
     coinduction r cih.
   Abort.
 
   Goal forall flag t u, bisim flag t u.
+  Proof.
     Fail coinduction r cih.     (* duly failing: flag should be fixed and introduced first *)
     intro flag.
     coinduction r cih.

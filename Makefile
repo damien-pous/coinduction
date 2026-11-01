@@ -3,8 +3,12 @@ KNOWNFILES   := Makefile _RocqProject
 
 .DEFAULT_GOAL := invoke-rocqmakefile
 
+# use the rocq-package option if rocq version supports it
+PACKAGE_NAME = rocq-coinduction
+ROCQPKG := $(shell if rocq makefile --no-rocq-package-warning -v >/dev/null 2>&1; then echo "--rocq-package $(PACKAGE_NAME)"; fi)
+
 RocqMakefile: Makefile _RocqProject
-	$(ROCQBIN)rocq makefile -f _RocqProject -docroot . -o RocqMakefile
+	$(ROCQBIN)rocq makefile -f _RocqProject $(ROCQPKG) -o RocqMakefile
 
 invoke-rocqmakefile: RocqMakefile
 	$(MAKE) --no-print-directory -f RocqMakefile $(filter-out $(KNOWNTARGETS),$(MAKECMDGOALS))
