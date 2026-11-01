@@ -220,7 +220,6 @@ Section s.
   Abort.
 End s.
 
-
 (** dependent+parametric+named *)
 Section s.  
   Variable T: nat -> Type.
@@ -243,3 +242,36 @@ Section s.
     coinduction' r cih for (@bisim X).
   Abort.
 End s.
+
+(** indexed *)
+Section i.
+  Variable T : Type.
+  (* The endo itself depends on a value
+     Use case in itrees: flags enable/disable rules so that strong, weak and expansions are defined at once.
+   *)
+  Variable b : bool -> mon (T -> T -> Prop).
+  Definition bisim flag := gfp (b flag).
+  Definition sbisim := bisim false.
+  Definition wbisim := bisim true.
+
+  Goal forall t u, bisim true t u.
+    Fail coinduction r cih.
+    Fail coinduction r cih for bisim.
+    Fail coinduction r cih for (bisim true).
+  Abort.
+
+  Goal forall t u, wbisim t u.
+    Fail coinduction r cih.
+    Fail coinduction r cih for wbisim.
+  Abort.
+
+  Goal forall flag t u, bisim flag t u.
+    Fail coinduction r cih.
+    Fail coinduction r cih for bisim.
+    intros flag.
+    Fail coinduction r cih.
+    Fail coinduction r cih for bisim.
+  Abort.
+End i.
+
+  
