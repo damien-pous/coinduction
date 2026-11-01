@@ -5,7 +5,7 @@ KNOWNFILES   := Makefile _RocqProject
 
 # use the rocq-package option if rocq version supports it
 PACKAGE_NAME = rocq-coinduction
-ROCQPKG := $(shell if rocq makefile --no-rocq-package-warning -v >/dev/null 2>&1; then echo "--rocq-package $(PACKAGE_NAME)"; fi)
+ROCQPKG := $(shell if rocq makefile --no-rocq-package-warning -v >/dev/null 2>&1; then echo "--rocq-package $(PACKAGE_NAME) --legacy-support"; fi)
 
 RocqMakefile: Makefile _RocqProject
 	$(ROCQBIN)rocq makefile -f _RocqProject $(ROCQPKG) -o RocqMakefile
