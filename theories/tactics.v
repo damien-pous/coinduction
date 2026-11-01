@@ -17,8 +17,7 @@ we provide three tactics:
 
 Require Import lattice tower rel.
 From elpi Require Import elpi.
-From Coinduction Extra Dependency "box_gfp.elpi" as box_gfp.
-From Coinduction Extra Dependency "reify.elpi" as reify.
+From Coinduction Extra Dependency "coinduction.elpi" as coinduction.
 Import CoindNotations.
 Set Implicit Arguments.
 
@@ -197,30 +196,26 @@ Module reification.
  
  (** ** tools for the [coinduction] tactic *)
 
- (**  *)
+ (** pT predicates are always inf-closed *)
  Lemma inf_closed_pT A c (x: fT A c): inf_closed (fun y => pT y x).
  Proof.
    intros T HT. 
    rewrite eT. apply inf_spec. intros R TR.
    rewrite <-eT. apply HT, TR.
  Qed.
-   
+
  (** reformulation of the tower induction lemma using reified terms
      for the tactic [coinduction]
      not used in practice, it is subsumed by Proposition [ptower] below *)
- Proposition tower A c (b: mon (REL A)) (x: fT A c):
-     (forall R: Chain b, pT `R x -> pT (b `R) x) -> 
-     (pT (gfp b) x).
- Proof.
-   intro H.
-   cut (forall R: Chain b, pT `R x). intros E. apply E. 
-   apply (tower (inf_closed_pT _ _ x)). apply H.
- Qed.
-
  Proposition tower' A c (b: mon (REL A)) (x: fT A c):
    (forall R: Chain b, pT `R x -> pT (b `R) x) -> 
    (forall R: Chain b, pT `R x).
- Admitted.
+ Proof. exact (tower (inf_closed_pT _ _ x)). Qed.
+   
+ Proposition tower A c (b: mon (REL A)) (x: fT A c):
+     (forall R: Chain b, pT `R x -> pT (b `R) x) -> 
+     (pT (gfp b) x).
+ Proof. intro H. now apply tower'. Qed.
 
  (* idea: the above lemma can be used as follows: *)
  (*
@@ -345,106 +340,13 @@ Module reification.
  
 End reification.
 
+
 (** * Exported tactics *)
 
-(** registering constants required in the OCaml plugin  *)
-Register mon                     as coinduction.mon.
-Register body                    as coinduction.body.
-Register elem                    as coinduction.elem.
-Register Chain                   as coinduction.Chain.
-Register gfp                     as coinduction.gfp.
-Register gfp_prop                as coinduction.gfp_prop.
-Register Symmetrical             as coinduction.Symmetrical.
-Register PRP                     as coinduction.PRP.
-Register ABS                     as coinduction.ABS.
-Register tuple                   as coinduction.tuple.
-Register reification.hol         as coinduction.hol.
-Register reification.abs         as coinduction.abs.
-Register reification.cnj         as coinduction.cnj.
-Register reification.fT          as coinduction.fT.
-Register reification.pT          as coinduction.pT.
-Register reification.tnil        as coinduction.tnil.
-Register reification.tcons       as coinduction.tcons.
-Register reification.ptower      as coinduction.ptower.
-Register reification.by_symmetry as coinduction.by_symmetry.
+(* Elpi Debug "DEBUG_COINDUCTION". *)
+Elpi Tactic coinduction.
+Elpi Accumulate File coinduction.
 
-(** loading the OCaml plugin  *)
-Declare ML Module "rocq-coinduction.plugin". 
-
-(** in case [gfp b] is named (eg. Definition x := gfp b),
-    it is not easy to recognise it automatically.
-    We design two workarounds.
- *)
-
-(** the following tactic makes it possible to retrieve [b] out of a term [x] convertible to [gfp b] *)
-Definition get_gfp X L b x (e: @gfp X L b = x) := b.
-Arguments get_gfp [_ _ _] _ _.
-Ltac get_gfp x := eval unfold get_gfp in (get_gfp x eq_refl).
-(** then we can use the ocaml plugin to perform abstraction  *)
-Tactic Notation "abstract_gfp_ocaml_for" uconstr(x) :=
-  let b := get_gfp x in abstract_gfp_ocaml x b.
-
-(** alternatively, we can perform abstraction through the following elpi tactic
-    (not preserving bound names, unfortunately) *)
-Definition box_gfp {T} (x: T) := x.
-Elpi Tactic box_gfp.
-Elpi Accumulate File box_gfp.
-Lemma boxed_gfp_prop {X} {L : CompleteLattice X} [b : mon X] (P : X -> Prop):
-  (forall x : Chain b, P (elem x)) -> P (box_gfp (gfp b)).
-Proof. exact (gfp_prop P). Qed.
-Tactic Notation "abstract_gfp_elpi" :=
-  elpi box_gfp; apply boxed_gfp_prop.
-Tactic Notation "abstract_gfp_elpi" "for" uconstr(x) :=
-  elpi box_gfp (x); apply boxed_gfp_prop.
-Tactic Notation "abstract_gfp_elpi" "arity" int(n) :=
-  elpi box_gfp ltac_int:(n); apply boxed_gfp_prop.
-
-
-Elpi Tactic reify.
-Elpi Accumulate File reify.
-Ltac apply_ptower_elpi R n :=
-  elpi reify (R) (n); clear R; intro R.
-       
-Section s.  
-  Variable b : mon (nat -> nat -> Prop).  
-  Goal gfp b 2 3.
-  Proof.
-    abstract_gfp_elpi. intro R.
-    elpi reify (R) (0).    
-    clear R. intros R H. 
-  Abort.
-
-  Goal gfp b 3 4 /\ gfp b 4 5.
-  Proof.
-    abstract_gfp_elpi. intro R.
-    elpi reify (R) (0).
-    clear R. intros R H. 
-  Abort.
-
-  Goal forall n, gfp b n (n+3).
-  Proof.
-    abstract_gfp_elpi. intro R.
-    elpi reify (R) (0).
-    clear R. intros R H. 
-  Abort.
-
-  Goal forall n, gfp b n (n+3) /\ forall m, gfp b m n.
-  Proof.
-    abstract_gfp_elpi. intro R.
-    elpi reify (R) (0).
-    clear R. intros R H. 
-  Abort.
-
-  Goal gfp b 2 3.
-  Proof.
-    abstract_gfp_elpi. intro R.
-    elpi reify (R) (0). clear R. intros R H.
-    cut (`R 4 5). admit.
-    revert H. 
-    elpi reify (R) (1). clear R. intros R H H'.
-  Abort.
-End s. 
-  
 (** ** starting a proof by (enhanced) coinduction *)
 (** when the goal is of the shape
 
@@ -466,28 +368,93 @@ End s.
     Note the move to [b `R] in the conclusion: now we should play at least one step of the coinductive game for all pairs inserted in the candidate.
     Also note that [H] maybe an introduction pattern.
  *)
-(** we use the OCaml defined [apply_ptower] tactic, whose role is:
-    - to parse the goal to recognise a bisimulation candidate
-    - to `apply' [reification.ptower] with reified arguments corresponding to that candidate
-    - to `change' the new goal to get rid of the reified operations and get back to a goal resembling the initial one
-    (The last step could be implemented with [simpl reification.pT], but this would result in unwanted additional simplifications, and this resets names of bound variables in a very bad way. This is why we spend time in OCaml to reconstruct a type for the new goal by following syntactically the initial one.)
-  *)
+
 Tactic Notation "coinduction" ident(R) simple_intropattern(H) :=
-  abstract_gfp_elpi; intro R; apply_ptower_elpi R O; intros H.
+  elpi coinduction start; intros R H.
 
-Tactic Notation "coinduction" ident(R) simple_intropattern(H) "for" uconstr(x) :=
-  abstract_gfp_elpi for x; intro R; apply_ptower_elpi R O; intros H.
+(* Section test.   *)
+(*   Variables b c : mon (nat -> nat -> Prop).   *)
+(*   Goal gfp b 2 3. *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
 
-Tactic Notation "coinduction" ident(R) simple_intropattern(H) "arity" int(n) :=
-  (* abstract_gfp_elpi arity n; *) (* TOFIX: how to pass [n] as an argument? *)
-  elpi box_gfp ltac_int:(n); apply boxed_gfp_prop;
-  intro R; apply_ptower_elpi R O; intros H. 
+(*   Goal gfp b 3 4 /\ gfp b 4 5. *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
 
-Tactic Notation "coinduction'" ident(R) simple_intropattern(H) :=
-  abstract_gfp_ocaml; intro R; apply_ptower R O; intros H.
+(*   Goal gfp b 3 4 /\ gfp c 4 5. *)
+(*   Proof. *)
+(*     Fail coinduction R H. *)
+(*   Abort. *)
 
-Tactic Notation "coinduction'" ident(R) simple_intropattern(H) "for" uconstr(x) :=
-  abstract_gfp_ocaml_for x; intro R; apply_ptower R O; intros H.
+(*   Goal forall n, gfp b n (n+3). *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+
+(*   Goal forall n, gfp b n (n+3) /\ forall m, gfp b m n. *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+
+(*   Let gfpb := gfp b.  *)
+(*   Goal gfpb 2 3. *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+
+(*   Goal forall n, gfpb n (n+3) /\ forall m, gfp b m n. *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+
+(*   Goal forall n, gfpb n (n+3) /\ forall m, gfpb m n. *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+(* End test. *)
+
+(* Section test. *)
+(*   Variable T: nat -> Type. *)
+(*   Variables b : mon (forall n, T n -> Prop). *)
+(*   Variable f: forall n, T n. *)
+(*   Goal gfp b 2 (f 2). *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+(*   Let gfpb := gfp b.  *)
+(*   Goal gfpb (f 2). *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+(*   Let gfpb' := gfp b.  *)
+(*   Arguments gfpb': clear implicits. *)
+(*   Goal gfpb' 2 (f 2). *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+(*   Goal gfpb (f 2) /\ gfpb' 3 (f 3). *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+(*   Goal gfpb' 2 (f 2) /\ gfpb (f 3). *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+(* End test. *)
+
+(* Section test. *)
+(*   Variable T: nat -> Type. *)
+(*   Variable f: forall n, T n. *)
+(*   Variable b: mon (forall n, T n -> T (n+n) -> Prop). *)
+
+(*   Goal gfp b _ (f 2) (f 4). *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*   Abort. *)
+(* End test. *)
 
 (** ** accumulating knowledge in a proof by enhanced coinduction *)
 
@@ -515,21 +482,14 @@ Tactic Notation "coinduction'" ident(R) simple_intropattern(H) "for" uconstr(x) 
 
     Like for [coinduction], [H''] maybe an introduction pattern.
  *)
-
-(** the implementation is a bit more involved:
-    - we successively revert all assumptions about this candidate into the conclusion
-    - we use the OCaml tactic [apply_ptower] in order to reify the goal, apply [reification.ptower] with appropriate arguments, and get rid of the reified operations 
-    - then we move the hypotheses back to the context,
-    - and we introduce the new hypothesis
-  *)
 Ltac xaccumulate R n :=
   lazymatch goal with
   | H: context[R] |- _ => revert H; xaccumulate R (S n); intro H
-  | _ => apply_ptower_elpi R n
+  | _ => elpi coinduction accumulate (R) (n); clear R; intro R
   end.
 
 Tactic Notation "accumulate" hyp(R) simple_intropattern(H) :=
-  xaccumulate R O; intros H; simpl REL in *.
+  xaccumulate R O; intros H.
 
 Tactic Notation "accumulate" simple_intropattern(H) :=
   lazymatch goal with
@@ -537,33 +497,33 @@ Tactic Notation "accumulate" simple_intropattern(H) :=
   | _ => fail "could not find the coinductive candidate"
   end.
 
-(** reasoning on symmetric candidates with symmetric functions *)
-(** this tactic makes it possible to play only half of the coinductive game in cases where both the game and the current goal are symmetric:
-    - that the game is symmetric is inferred using the typeclasse [Symmetrical]
-    - that the goal is symmetric is proven using the given tactic (by default, [firstorder])
-    the goal should be of the form
-    [forall x y..., b `R u v] 
-    it moves to a goal of the form
-    [forall x y..., s `R u v] 
-    (where [R: Chain b] with [b] the function for the coinductive game, and [s] the function for the `half of [b]')
-    conjunctions are also allowed, like in the other tactics)
- *)
-(** as above, we use the OCaml defined tactic [apply_by_symmetry] in order to apply the lemma [reification.by_symmetry] and set the resulting goal back into a user-friendly shape *)
-Ltac default_sym_tac := solve[clear;firstorder] || fail "could not get symmetry automatically".
-Tactic Notation "symmetric" hyp(R) "using" tactic(tac) :=
-  apply_by_symmetry R; [simpl reification.pT; tac|].
-Tactic Notation "symmetric" hyp(R) :=
-  symmetric R using default_sym_tac.
-Tactic Notation "symmetric" "using" tactic(tac) :=
-  lazymatch goal with
-  | R: Chain _ |- _ => symmetric R using tac
-  | _ => fail "could not find the coinductive candidate"
-  end.
-Tactic Notation "symmetric" :=
-  lazymatch goal with
-  | R: Chain _ |- _ => symmetric R
-  | _ => fail "could not find the coinductive candidate"
-  end.
+
+(* Section test.   *)
+(*   Variables b : mon (nat -> nat -> Prop).   *)
+(*   Goal gfp b 2 3. *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*     cut (`R 4 5). admit. *)
+(*     accumulate H'.  *)
+(*     cut (`R 5 6). admit. *)
+(*     accumulate H''.  *)
+(*   Abort. *)
+(* End test. *)
+
+(* Section test. *)
+(*   Variable T: nat -> Type. *)
+(*   Variable f: forall n, T n. *)
+(*   Variable b: mon (forall n, T n -> T (n+n) -> Prop). *)
+
+(*   Goal gfp b _ (f 2) (f 4). *)
+(*   Proof. *)
+(*     coinduction R H. *)
+(*     cut (forall n x, `R _ (f n) x). admit. *)
+(*     accumulate H'.  *)
+(*   Abort. *)
+(* End test. *)
+
+
 
 (** performing a single step 
     (equivalent to [accumulate _], except that we do not deal with composite candidates and the coinductive proof need not be started) *)
@@ -591,3 +551,62 @@ match type of h with
 end.
 
 Tactic Notation "unstep" "in" ident(h) := unstep_in h.
+
+
+
+
+(** reasoning on symmetric candidates with symmetric functions *)
+
+
+(* TODO: switch to elpi *)
+
+(** registering constants required in the OCaml plugin  *)
+Register mon                     as coinduction.mon.
+Register body                    as coinduction.body.
+Register elem                    as coinduction.elem.
+Register Chain                   as coinduction.Chain.
+Register gfp                     as coinduction.gfp.
+Register gfp_prop                as coinduction.gfp_prop.
+Register Symmetrical             as coinduction.Symmetrical.
+Register PRP                     as coinduction.PRP.
+Register ABS                     as coinduction.ABS.
+Register tuple                   as coinduction.tuple.
+Register reification.hol         as coinduction.hol.
+Register reification.abs         as coinduction.abs.
+Register reification.cnj         as coinduction.cnj.
+Register reification.fT          as coinduction.fT.
+Register reification.pT          as coinduction.pT.
+Register reification.tnil        as coinduction.tnil.
+Register reification.tcons       as coinduction.tcons.
+Register reification.ptower      as coinduction.ptower.
+Register reification.by_symmetry as coinduction.by_symmetry.
+
+(** loading the OCaml plugin  *)
+Declare ML Module "rocq-coinduction.plugin". 
+
+(** this tactic makes it possible to play only half of the coinductive game in cases where both the game and the current goal are symmetric:
+    - that the game is symmetric is inferred using the typeclasse [Symmetrical]
+    - that the goal is symmetric is proven using the given tactic (by default, [firstorder])
+    the goal should be of the form
+    [forall x y..., b `R u v] 
+    it moves to a goal of the form
+    [forall x y..., s `R u v] 
+    (where [R: Chain b] with [b] the function for the coinductive game, and [s] the function for the `half of [b]')
+    conjunctions are also allowed, like in the other tactics)
+ *)
+(** as above, we use the OCaml defined tactic [apply_by_symmetry] in order to apply the lemma [reification.by_symmetry] and set the resulting goal back into a user-friendly shape *)
+Ltac default_sym_tac := solve[clear;firstorder] || fail "could not get symmetry automatically".
+Tactic Notation "symmetric" hyp(R) "using" tactic(tac) :=
+  apply_by_symmetry R; [simpl reification.pT; tac|].
+Tactic Notation "symmetric" hyp(R) :=
+  symmetric R using default_sym_tac.
+Tactic Notation "symmetric" "using" tactic(tac) :=
+  lazymatch goal with
+  | R: Chain _ |- _ => symmetric R using tac
+  | _ => fail "could not find the coinductive candidate"
+  end.
+Tactic Notation "symmetric" :=
+  lazymatch goal with
+  | R: Chain _ |- _ => symmetric R
+  | _ => fail "could not find the coinductive candidate"
+  end.

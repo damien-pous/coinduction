@@ -1,0 +1,144 @@
+%% [find.gfp P B] looks for an occurrence of [gfp B] in [P]
+func find.gfp term -> term.
+find.gfp {{lp:P /\ _}} B :- !, find.gfp P B.
+find.gfp (prod X S P) B :- !,  pi x \ decl x X S ==> find.gfp (P x) B.
+% easy case: when gfp occurrs explicitly
+find.gfp (app [{{@gfp}},_,_,B|_]) B :- !.
+% harder case: when gfp occurrs under an other name
+% in that case we must guess how many arguments to skip before finding it
+find.gfp (app L) B :- xfind.gfp {std.rev L} B, !.
+find.gfp P _ :- coq.error "did not recognise a gfp: " {coq.term->string P}.
+
+func xfind.gfp list term -> term.
+xfind.gfp L B :- coq.unify-eq (app {std.rev L}) {{gfp lp:B}} ok, !.
+xfind.gfp (_::L) B :- xfind.gfp L B.
+
+%% [parse A N R P P' C X]
+% A: Arity
+% N: int    N=|A|
+% R: REL A
+% P ~ pT R X        (the current goal)
+% P' = R\ pT R X    (so that the next goal is [forall R: Chain B, P' `R -> P' (b `R)])
+% C: T
+% X: fT A C
+func parse term, int, term, term -> (term -> term), term, term.
+parse A N R
+  {{lp:P /\ lp:Q}}
+  (R\ app [{{and}}, P' R, Q' R])
+  (app [{{reification.cnj}}, C, D])
+  {{(lp:X,lp:Y)}} :- !,
+  parse A N R P P' C X, parse A N R Q Q' D Y.
+parse A N R
+  (prod V S P)
+  (R\ prod V S (x\ P' x R))
+  (app [{{reification.abs}},S,fun V S C])
+  (fun V S X) :- !,
+  pi x \ decl x V S ==> parse A N R (P x) (P' x) (C x) (X x).
+parse A N R
+  (app RL)
+  (R\ app [R|L])
+  {{reification.hol}}
+  (app [{{tuple}},A|L]) :-
+  std.split-at N {std.rev RL} L' R', !,
+  R'' = app {std.rev R'},
+  unify R R'',
+  std.rev L' L.
+parse _ _ _ P _ _ _ :-
+  coq.error "unrecognised subterm: " {coq.term->string P}.
+
+%% attempt to unify to rocq terms
+func unify term, term ->.
+unify R S :- coq.unify-eq R S ok, !.
+unify R S :- coq.error "found two distinct gfps:\n" {coq.term->string R} "\nand\n" {coq.term->string S}.
+
+
+%% [arity S A N] computes the arity of relation type S
+% A: Arity
+% N: int  N = |A|
+% S ~ REL A
+func arity term -> term, int.
+arity (prod V S T) (app [{{ABS}},S,fun V S A]) N':- !,
+  pi x \ decl x V S ==> arity (T x) (A x) N, N' is N + 1.
+arity {{Prop}} {{PRP}} 0 :- !.
+arity T _ _ :- coq.error "unrecognised arity:" {coq.term->string T}.
+
+% compute the type of a term
+func type.check term -> term.
+type.check R T :- std.assert-ok! (coq.typecheck R T) "given constr does not typecheck".
+
+pred debug.say string ->.
+:if "DEBUG_COINDUCTION"
+debug.say S :- coq.notice S, fail.
+debug.say _.
+
+pred debug.say.term string,term ->.
+:if "DEBUG_COINDUCTION"
+debug.say.term S U :-
+  coq.notice {std.string.concat " " [S,"=",{coq.term->string U}]}, fail.
+debug.say.term _ _.
+
+pred debug.check string,term,term ->.
+:if "DEBUG_COINDUCTION"
+debug.check S U T :-
+  coq.notice {std.string.concat " " [S,"=",{coq.term->string U},":",{coq.term->string T}]},
+  type.check U T,
+  fail.
+debug.check _ _ _.
+
+solve (goal _ _ P _ [str "start"] as G) G' :-
+  @ltacfail! 0 => std.do! [
+             debug.say "START",
+  	     find.gfp P B,
+	     debug.say.term "GFP" B,
+	     type.check B {{mon lp:S}},
+	     arity S A N,
+	     debug.check "ARITY" A {{Arity}},
+  	     parse A N {{gfp lp:B}} P P' C X,
+	     debug.say.term "P'" (fun _ _ P'),
+	     debug.check "C" C {{reification.T}},
+	     debug.check "X" X {{reification.fT lp:A lp:C}},
+	     PP = prod _ {{Chain lp:B}} (R\ prod _ (P' {{elem lp:R}}) (_\ P' {{body lp:B (elem lp:R)}})),
+	     debug.check "PP" PP {{Prop}},
+	     refine {{@reification.tower lp:A lp:C lp:B lp:X (_: lp:PP)}} G G',
+  ].
+
+
+%% [pparse M A B N R P P' CS C X]
+% M is the number of hypotheses to accumulate
+% B: mon S
+% A: Arity
+% N: int = |A|
+% P ~ pTs CS R (pT R X)                    (the current goal)
+% P' = R\ pTs (tsnoc CS X) R (pT (N R) X)  (so that the next goal is [forall R, P' R])
+% CS: Ts A
+% C: T
+% X: fT A C
+func pparse term, term, term, int, term, term -> (term -> term), term, term, term.
+pparse {{0}} B A N R P
+  (R\ prod _ (P' R) (_\ P' {{body lp:B lp:R}}))
+  {{@reification.tnil lp:A}}
+  C X :- !,
+  parse A N R P P' C X.
+pparse {{S lp:M}} B A N R {{lp:P -> lp:Q}}
+  (R\ prod _ (P' R) (_\ Q' R))
+  {{@reification.tcons lp:A lp:C lp:X lp:CS}}
+  D Y :- !,
+  parse A N R P P' C X,
+  pparse M B A N R Q Q' CS D Y.
+
+solve (goal _ _ P _ [str "accumulate", trm R, trm M] as G) G' :-
+  @ltacfail! 0 => std.do! [
+   	     debug.say "ACCUMULATE",
+	     type.check R {{Chain lp:B}},
+	     type.check B {{mon lp:S}},
+	     arity S A N,	     
+ 	     debug.check "ARITY" A {{Arity}},
+  	     pparse M B A N {{elem lp:R}} P P' CS C X,
+	     debug.say.term "P' `R:" (P' {{elem lp:R}}),
+	     debug.check "CS" CS {{reification.Ts lp:A}},
+	     debug.check "C" C {{reification.T}},
+	     debug.check "X" X {{reification.fT lp:A lp:C}},
+	     PP = prod _ {{Chain lp:B}} (R\ P' {{elem lp:R}}),
+	     debug.check "PP" PP {{Prop}},
+	     refine {{(@reification.ptower lp:A lp:B lp:CS lp:C lp:X (_: lp:PP) lp:R)}} G G'
+  ].

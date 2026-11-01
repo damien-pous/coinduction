@@ -42,7 +42,6 @@ Section s.
   Proof.
     Fail coinduction R H.       (* duly failing: several gfps *)
   Abort.
-
   
   Goal 5 ~ 6.
   Proof.
@@ -147,7 +146,7 @@ Variable b c: mon (X -> Prop).
 
 Goal forall x, gfp b x -> gfp b x.
 Proof.
-  coinduction P H.              (* note how the gfp is kept in the hypothesis *)
+  coinduction P H.    (* note how the gfp is kept in the hypothesis *)
 Abort.
 
 Goal forall x, gfp b x -> gfp c x.
@@ -165,36 +164,24 @@ Variable b c: mon (X -> Prop).
 Let gfpb := gfp b.
 Goal forall x, gfpb x.
 Proof.
-  Fail coinduction P H.         (* duly failing: gfpb not recognised *)
-  coinduction P H for gfpb.
-  Restart.
-  coinduction P H arity 1.
-  Restart.
-  coinduction' P H for gfpb.
+  coinduction P H.
 Abort.
 
 Goal forall x, gfp b x /\ gfpb x.
 Proof.
   coinduction P H.
-  Restart.
-  coinduction P H for gfpb.
-  Restart.
-  coinduction' P H for gfpb.
 Abort.
 
 Goal forall x, gfpb x /\ gfp c x.
 Proof.
   intro.
-  Fail coinduction P H.           (* duly failing: two gfps *)
-  Fail coinduction P H for gfpb.  (* duly failing: two gfps) *)
-  Fail coinduction' P H for gfpb. (* duly failing: two gfps) *)
+  Fail coinduction P H.         (* duly failing: two gfps *)
 Abort.
 
 Goal forall x, gfpb x /\ True.
 Proof.
   intro.
-  Fail coinduction P H for gfpb.     (* duly failing: True is not a gfp *)
-  Fail coinduction' P H for gfpb.     (* duly failing: True is not a gfp *)
+  Fail coinduction P H.         (* duly failing: True is not a gfp *)
 Abort.
 
 End m.
@@ -208,15 +195,7 @@ Section s.
 
   Goal forall t u, @bisim X t u.
   Proof.
-    coinduction r cih for (@bisim X).
-    Restart.
-    coinduction' r cih for (@bisim X).
-    Restart.
-    coinduction r cih for bisim.
-    Restart.
-    coinduction r cih arity 2.
-    Restart.
-    Fail coinduction' r cih for bisim.
+    coinduction r cih.
   Abort.
 End s.
 
@@ -231,15 +210,6 @@ Section s.
 
   Goal forall n l t u, @bisim X n l t u.
   Proof.
-    coinduction r cih for bisim. 
-    Restart.
-    coinduction r cih for (@bisim X).
-    Restart.
-    coinduction r cih arity 4.
-    Restart.
-    unfold bisim. 
     coinduction r cih.
-    Restart.
-    coinduction' r cih for (@bisim X).
   Abort.
 End s.
