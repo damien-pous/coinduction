@@ -1,6 +1,6 @@
 (** * Utilities for working with binary relations  *)
 
-Require Import tower.
+Require Import lattice tower.
 Set Implicit Arguments.
 
 (* TODO: 

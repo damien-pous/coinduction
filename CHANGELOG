@@ -1,7 +1,8 @@
 * ?? Nov 2026: v1.23
 
+ - new implementation of the tactics using rocq-elpi
  - fixes issues about named gfps and contravariant occurrences of gfp.
- - needs rocq-elpi
+ - needs rocq 9.2 and rocq-elpi
 
 * 06 May 2026: v1.22
 

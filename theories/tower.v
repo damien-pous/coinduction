@@ -1,6 +1,6 @@
 (** * Abstract theory of coinduction via the final chain and tower induction *)
 
-Require Export lattice.
+Require Import lattice.
 Set Implicit Arguments.
 
 Section s.

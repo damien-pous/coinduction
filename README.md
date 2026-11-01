@@ -35,10 +35,14 @@ Examples on how to use the library may be found in the associated rocq-coinducti
  + `lattice.v`     : complete lattices, monotone functions in such lattices
  + `tower.v`       : abstract theory of coinduction via tower induction
  + `rel.v`         : tools for the complete lattice of binary relations
+ + `reification.v` : internal reification tools for the tactics
  + `tactics.v`     : tactics for coinductive predicates/relations
  + `companion.v`   : abstract theory of the companion (no longer used)
  + `tests.v`       : sanity checks
  + `all.v`         : single module to load the library (despite the name, excludes companion and tests)
+ 
+ + `ocaml_tactics.v` : former implementation of the tactics, through an ocaml plugin
+ + `ocaml_tests.v`   : tests for this former implementation
 
 ## Meta
 

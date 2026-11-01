@@ -9,12 +9,17 @@ theories/lattice.v
 theories/tower.v
 theories/companion.v
 theories/rel.v
+theories/reification.v
 theories/tactics.v
 theories/tests.v
 theories/all.v
 
+# previous implementation of the tactics with an ocaml plugin,
+# kept for now in case we have to revert back
 src/reification.ml
 src/reification.mli
 src/reification_g.mlg
 src/reification_g.mli
 src/plugin.mlpack
+theories/ocaml_tactics.v
+theories/ocaml_tests.v
