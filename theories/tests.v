@@ -241,3 +241,18 @@ Section i.
     coinduction r cih.
   Abort.
 End i.
+
+(** Naming relations *)
+Section n.
+
+  Variable T : Type.
+  Definition rel A B := A -> B -> Prop.
+
+  Variable b : mon (rel T T).
+
+  Goal forall t u, gfp b t u.
+    Fail coinduction r cih.
+  Abort.
+    
+End n.
+    
