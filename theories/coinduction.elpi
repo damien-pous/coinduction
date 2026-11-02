@@ -76,7 +76,7 @@ func arity term -> term, int.
 arity (prod V S T) (app [{{ABS}},S,fun V S A]) N':- !,
   pi x \ decl x V S ==> arity (T x) (A x) N, N' is N + 1.
 arity {{Prop}} {{PRP}} 0 :- !.
-arity T A N :- !, arity {whd1 T} A N.
+arity T A N :- whd1 T T', !, if (T = T') (fail) (arity T' A N).
 arity T _ _ :- coq.error "unrecognised arity:" {coq.term->string T}.
 
 %% [type.check R T] attempts to show [R: T], unifying elpi variables if necessary

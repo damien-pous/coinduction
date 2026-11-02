@@ -253,6 +253,7 @@ Section n.
   Variable b : mon (rel T T).
 
   Goal forall t u, gfp b t u.
+  Proof.
     coinduction r cih.
   Abort.
     
@@ -265,7 +266,8 @@ Section n.
   Variable b : mon (nat -> Type).
 
   Goal forall n: nat, gfp b n.
-    Fail coinduction r cih.     (* TODO: better error message *)
+  Proof.
+    Fail coinduction r cih.
   Abort.
     
 End n.
