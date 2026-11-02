@@ -246,13 +246,26 @@ End i.
 Section n.
 
   Variable T : Type.
-  Definition rel A B := A -> B -> Prop.
+  Definition prop := Prop.
+  Definition pred B := B -> prop.
+  Definition rel A B := A -> pred B.
 
   Variable b : mon (rel T T).
 
   Goal forall t u, gfp b t u.
-    Fail coinduction r cih.
+    coinduction r cih.
   Abort.
     
 End n.
+
+(** bad arities *)
+Section n.
+
+  Variables (L: CompleteLattice Type).
+  Variable b : mon (nat -> Type).
+
+  Goal forall n: nat, gfp b n.
+    Fail coinduction r cih.     (* TODO: better error message *)
+  Abort.
     
+End n.
