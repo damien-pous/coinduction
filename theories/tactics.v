@@ -157,8 +157,10 @@ Tactic Notation "unstep" "in" ident(h) := unstep_in h.
     conjunctions are also allowed, like in the other tactics)
  *)
 Ltac default_sym_tac := solve[clear;firstorder] || fail "could not get symmetry automatically".
+(* used by the elpi code to restate the symmetry requirement in a user-friendly way *)
+Ltac coinduction_change goal := change goal.
 Tactic Notation "symmetric" hyp(R) "using" tactic(tac) :=
-  (elpi coinduction symmetry (R)); [simpl reification.pT; tac|].
+  (elpi coinduction symmetry (R)); [elpi coinduction symmetry_requirement; tac|].
 Tactic Notation "symmetric" hyp(R) :=
   symmetric R using default_sym_tac.
 Tactic Notation "symmetric" "using" tactic(tac) :=

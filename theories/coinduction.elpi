@@ -149,6 +149,52 @@ solve (goal _ _ P _ [str "symmetry", trm R] as G) G' :- !,
   ].
 
 
+%% [unpT X R P]: [P] is the user-friendly form of [reification.pT R X], for a
+% value [X] built by [parse]; it uses the names bound in [X], i.e., those of
+% the original goal
+%
+func unpT term, term -> term.
+unpT (fun N T F) R (prod N T G) :- !, pi x \ decl x N T ==> unpT (F x) R (G x).
+unpT (app [{{@pair}}, _, _, X, Y]) R (app [{{and}}, P, Q]) :- !, unpT X R P, unpT Y R Q.
+unpT (app [{{tuple}}, _ | L]) R (app [R | L]) :- !.
+unpT X _ _ :- coq.error "unrecognised reified value: " {coq.term->string X}.
+
+%% [rel.type A K T]: [T] is the user-friendly form of [reification.REL' A K],
+% i.e., [forall x1: X1, ..., forall xn: Xn, K] for [A] the arity
+% [ABS X1 (fun x1 => ... ABS Xn (fun xn => PRP))]
+%
+func rel.type term, term -> term.
+rel.type {{reification.PRP}} K K :- !.
+rel.type (app [{{reification.ABS}}, B, fun N _ Q]) K (prod N B T) :- !,
+  pi x \ decl x N B ==> rel.type (Q x) K (T x).
+rel.type A K {{reification.REL' lp:A lp:K}}.
+
+%% [swap R P Q] helper turns each [R x y] into [R y x]
+% (for goals produced by [unpT], where [R] only occurs as the head of such applications)
+%
+func swap term, term -> term.
+swap R (app [R, X, Y]) (app [R, Y, X]) :- !.
+swap R (prod N T F) (prod N T G) :- !, pi x \ swap R (F x) (G x).
+swap R (app [{{and}}, P, Q]) (app [{{and}}, P', Q']) :- !, swap R P P', swap R Q Q'.
+swap _ P P.
+
+%% entrypoint used by the symmetric tactic on the first goal produced by
+%% [reification.by_symmetry]: [forall R, pT R x -> pT R (converse_fT x)].
+%% It is restated in a user-friendly way, with the names of the original goal
+%% (the [change] is done by Ltac, so that the context of the goal is preserved)
+solve (goal _ _ (prod _ {{reification.REL' lp:A lp:K}} (r\ prod _ (app [{{@reification.pT}}, _, _, r, X]) _)) _
+            [str "symmetry_requirement"] as G) G' :- !,
+  @ltacfail! 0 => std.do! [
+             debug.say "SYMMETRY REQUIREMENT",
+	     rel.type A K T,
+	     (pi r \ unpT X r (P r)),
+	     (pi r \ swap r (P r) (Q r)),
+	     coq.ltac.fresh-id "R" T RId, coq.id->name RId RN,
+	     PP = prod RN T (r\ prod _ (P r) (_\ Q r)),
+	     type.check PP {{Prop}},
+	     coq.ltac.call "coinduction_change" [trm PP] G G',
+  ].
+
 %% [pparse M A B N R P P' CS C X]
 % M is the number of hypotheses to accumulate
 % B: mon S

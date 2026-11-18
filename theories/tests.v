@@ -83,6 +83,19 @@ Section s.
   
 End s.
 
+(** [symmetric] states the symmetry requirement in a user-friendly way:
+    with the user's bound names, and a plain relation type *)
+Section sym_names.
+  Variable s : mon (nat -> nat -> Prop).
+  Abbreviation b' := (cap s (converse ° s ° converse)).
+  Goal forall n m, gfp b' (n+m) (m+n).
+  Proof.
+    coinduction R H.
+    symmetric using (intro R'; lazymatch type of R' with nat -> nat -> Prop => idtac end;
+                     intros; apply (H0 m n)).
+  Abort.
+End sym_names.
+
 (** support for heterogeneous relations of arbitrary arity *)
 Section h.
   Variable b: mon (nat -> bool -> nat+bool -> unit -> Prop).
