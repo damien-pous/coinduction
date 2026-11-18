@@ -104,6 +104,19 @@ debug.check S U T :-
   fail.
 debug.check _ _ _.
 
+%% apply a reification lemma through the Ltac wrapper [Tac] (see tactics.v). 
+%% this is a workaround until https://github.com/LPCIC/coq-elpi/issues/1136 is fixed. 
+func apply.ltac string, list argument, term, goal -> list sealed-goal.
+apply.ltac Tac Args PP G G' :-
+  type.check PP {{Prop}},
+  std.forall Args check.arg,
+  coq.ltac.call Tac Args G G' D,
+  if (D = ok) true (coq.error "coinduction: applying" Tac "failed:" D).
+
+func check.arg argument ->.
+check.arg (trm T) :- !, type.check T _.
+check.arg _.
+
 %% entrypoint for the coinduction tactic
 %% find the gfp, reifies the goal, apply [reification.tower],
 %% and change the resulting goal to a user-friendly one (i.e., without [pT])
@@ -122,7 +135,7 @@ solve (goal _ _ P _ [str "start"] as G) G' :- !,
 	     PP = prod _ {{Chain lp:B}} (R\ prod _ (P' {{elem lp:R}}) (_\ P' {{body lp:B (elem lp:R)}})),
 	     debug.check "PP" PP {{Prop}},
              debug.say "About to apply tower",
-	     refine {{@reification.tower lp:A lp:C lp:B lp:X (_: lp:PP)}} G G',
+	     apply.ltac "coinduction_tower" [trm A, trm C, trm B, trm X, trm PP] PP G G',
   ].
 
 %% entrypoint for the symmetric tactic
@@ -145,9 +158,55 @@ solve (goal _ _ P _ [str "symmetry", trm R] as G) G' :- !,
 	     PP = P' {{body lp:H (elem lp:R)}},
 	     debug.check "PP" PP {{Prop}},
              debug.say "About to apply by_symmetry",
-	     refine {{@reification.by_symmetry _ lp:C lp:X lp:B lp:H lp:BH lp:R _ (_: lp:PP)}} G G',
+	     apply.ltac "coinduction_by_symmetry" [trm C, trm X, trm B, trm H, trm BH, trm R, trm PP] PP G G',
   ].
 
+
+%% [unpT X R P]: [P] is the user-friendly form of [reification.pT R X], for a
+% value [X] built by [parse]; it uses the names bound in [X], i.e., those of
+% the original goal
+%
+func unpT term, term -> term.
+unpT (fun N T F) R (prod N T G) :- !, pi x \ decl x N T ==> unpT (F x) R (G x).
+unpT (app [{{@pair}}, _, _, X, Y]) R (app [{{and}}, P, Q]) :- !, unpT X R P, unpT Y R Q.
+unpT (app [{{tuple}}, _ | L]) R (app [R | L]) :- !.
+unpT X _ _ :- coq.error "unrecognised reified value: " {coq.term->string X}.
+
+%% [rel.type A K T]: [T] is the user-friendly form of [reification.REL' A K],
+% i.e., [forall x1: X1, ..., forall xn: Xn, K] for [A] the arity
+% [ABS X1 (fun x1 => ... ABS Xn (fun xn => PRP))]
+%
+func rel.type term, term -> term.
+rel.type {{reification.PRP}} K K :- !.
+rel.type (app [{{reification.ABS}}, B, fun N _ Q]) K (prod N B T) :- !,
+  pi x \ decl x N B ==> rel.type (Q x) K (T x).
+rel.type A K {{reification.REL' lp:A lp:K}}.
+
+%% [swap R P Q] helper turns each [R x y] into [R y x]
+% (for goals produced by [unpT], where [R] only occurs as the head of such applications)
+%
+func swap term, term -> term.
+swap R (app [R, X, Y]) (app [R, Y, X]) :- !.
+swap R (prod N T F) (prod N T G) :- !, pi x \ swap R (F x) (G x).
+swap R (app [{{and}}, P, Q]) (app [{{and}}, P', Q']) :- !, swap R P P', swap R Q Q'.
+swap _ P P.
+
+%% entrypoint used by the symmetric tactic on the first goal produced by
+%% [reification.by_symmetry]: [forall R, pT R x -> pT R (converse_fT x)].
+%% It is restated in a user-friendly way, with the names of the original goal
+%% (the [change] is done by Ltac, so that the context of the goal is preserved)
+solve (goal _ _ (prod _ {{reification.REL' lp:A lp:K}} (r\ prod _ (app [{{@reification.pT}}, _, _, r, X]) _)) _
+            [str "symmetry_requirement"] as G) G' :- !,
+  @ltacfail! 0 => std.do! [
+             debug.say "SYMMETRY REQUIREMENT",
+	     rel.type A K T,
+	     (pi r \ unpT X r (P r)),
+	     (pi r \ swap r (P r) (Q r)),
+	     coq.ltac.fresh-id "R" T RId, coq.id->name RId RN,
+	     PP = prod RN T (r\ prod _ (P r) (_\ Q r)),
+	     type.check PP {{Prop}},
+	     coq.ltac.call "coinduction_change" [trm PP] G G',
+  ].
 
 %% [pparse M A B N R P P' CS C X]
 % M is the number of hypotheses to accumulate
@@ -192,7 +251,7 @@ solve (goal _ _ P _ [str "accumulate", trm R, trm M] as G) G' :- !,
 	     PP = prod _ {{Chain lp:B}} (R\ P' {{elem lp:R}}),
 	     debug.check "PP" PP {{Prop}},
              debug.say "About to apply ptower",
-	     refine {{(@reification.ptower lp:A lp:B lp:CS lp:C lp:X (_: lp:PP) lp:R)}} G G'
+	     apply.ltac "coinduction_ptower" [trm A, trm B, trm CS, trm C, trm X, trm PP, trm R] PP G G'
   ].
 
 solve (goal _ _ _ _ L) _ :-

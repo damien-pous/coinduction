@@ -24,6 +24,18 @@ Import CoindNotations.
 Set Implicit Arguments.
 
 (* Elpi Debug "DEBUG_COINDUCTION". *)
+
+(** The elpi code below computes the arguments of the reification lemmas, and
+    lets the following Ltac wrappers apply them instead of elpi to avoid a bug. 
+    This is a workaround until https://github.com/LPCIC/coq-elpi/issues/1136 is fixed.
+*)
+Ltac coinduction_tower ar sk mon x goal :=
+  refine (@reification.tower ar sk mon x (_: goal)).
+Ltac coinduction_by_symmetry sk x mon half sym chain goal :=
+  refine (@reification.by_symmetry _ sk x mon half sym chain _ (_: goal)).
+Ltac coinduction_ptower ar mon hyps sk x goal chain :=
+  refine (@reification.ptower ar mon hyps sk x (_: goal) chain).
+
 Elpi Tactic coinduction.
 Elpi Accumulate File coinduction.
 
@@ -157,8 +169,10 @@ Tactic Notation "unstep" "in" ident(h) := unstep_in h.
     conjunctions are also allowed, like in the other tactics)
  *)
 Ltac default_sym_tac := solve[clear;firstorder] || fail "could not get symmetry automatically".
+(* used by the elpi code to restate the symmetry requirement in a user-friendly way *)
+Ltac coinduction_change goal := change goal.
 Tactic Notation "symmetric" hyp(R) "using" tactic(tac) :=
-  (elpi coinduction symmetry (R)); [simpl reification.pT; tac|].
+  (elpi coinduction symmetry (R)); [elpi coinduction symmetry_requirement; tac|].
 Tactic Notation "symmetric" hyp(R) :=
   symmetric R using default_sym_tac.
 Tactic Notation "symmetric" "using" tactic(tac) :=
