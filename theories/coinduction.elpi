@@ -104,6 +104,19 @@ debug.check S U T :-
   fail.
 debug.check _ _ _.
 
+%% apply a reification lemma through the Ltac wrapper [Tac] (see tactics.v). 
+%% this is a workaround until https://github.com/LPCIC/coq-elpi/issues/1136 is fixed. 
+func apply.ltac string, list argument, term, goal -> list sealed-goal.
+apply.ltac Tac Args PP G G' :-
+  type.check PP {{Prop}},
+  std.forall Args check.arg,
+  coq.ltac.call Tac Args G G' D,
+  if (D = ok) true (coq.error "coinduction: applying" Tac "failed:" D).
+
+func check.arg argument ->.
+check.arg (trm T) :- !, type.check T _.
+check.arg _.
+
 %% entrypoint for the coinduction tactic
 %% find the gfp, reifies the goal, apply [reification.tower],
 %% and change the resulting goal to a user-friendly one (i.e., without [pT])
@@ -122,7 +135,7 @@ solve (goal _ _ P _ [str "start"] as G) G' :- !,
 	     PP = prod _ {{Chain lp:B}} (R\ prod _ (P' {{elem lp:R}}) (_\ P' {{body lp:B (elem lp:R)}})),
 	     debug.check "PP" PP {{Prop}},
              debug.say "About to apply tower",
-	     refine {{@reification.tower lp:A lp:C lp:B lp:X (_: lp:PP)}} G G',
+	     apply.ltac "coinduction_tower" [trm A, trm C, trm B, trm X, trm PP] PP G G',
   ].
 
 %% entrypoint for the symmetric tactic
@@ -145,7 +158,7 @@ solve (goal _ _ P _ [str "symmetry", trm R] as G) G' :- !,
 	     PP = P' {{body lp:H (elem lp:R)}},
 	     debug.check "PP" PP {{Prop}},
              debug.say "About to apply by_symmetry",
-	     refine {{@reification.by_symmetry _ lp:C lp:X lp:B lp:H lp:BH lp:R _ (_: lp:PP)}} G G',
+	     apply.ltac "coinduction_by_symmetry" [trm C, trm X, trm B, trm H, trm BH, trm R, trm PP] PP G G',
   ].
 
 
@@ -238,7 +251,7 @@ solve (goal _ _ P _ [str "accumulate", trm R, trm M] as G) G' :- !,
 	     PP = prod _ {{Chain lp:B}} (R\ P' {{elem lp:R}}),
 	     debug.check "PP" PP {{Prop}},
              debug.say "About to apply ptower",
-	     refine {{(@reification.ptower lp:A lp:B lp:CS lp:C lp:X (_: lp:PP) lp:R)}} G G'
+	     apply.ltac "coinduction_ptower" [trm A, trm B, trm CS, trm C, trm X, trm PP, trm R] PP G G'
   ].
 
 solve (goal _ _ _ _ L) _ :-

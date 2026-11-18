@@ -284,3 +284,38 @@ Section n.
   Abort.
     
 End n.
+
+(** hypotheses shadowing a section variable (e.g., after [specialize]) are
+    kept in the new goals, rather than replaced by the section variable *)
+Section shadow.
+
+  Variable b : mon (nat -> Prop).
+  Variable s : mon (nat -> nat -> Prop).
+  Hypothesis HP : forall n : nat, n = n.
+  Hypothesis Hb : forall (R : Chain b) n, b `R n.
+
+  Goal forall n, gfp b n.
+  Proof.
+    specialize (HP 0).
+    coinduction R H.
+    Fail pose proof (HP 1).
+  Abort.
+
+  Goal forall R : Chain b, `R 0.
+  Proof.
+    intro R. specialize (HP 0).
+    accumulate H.
+    Fail pose proof (HP 1).
+    apply Hb.
+  Qed.                          (* used to fail here: the proof term was ill-typed *)
+
+  Abbreviation b' := (cap s (converse ° s ° converse)).
+  Goal forall n m, gfp b' n m.
+  Proof.
+    specialize (HP 0).
+    coinduction R H.
+    symmetric.
+    Fail pose proof (HP 1).
+  Abort.
+
+End shadow.
